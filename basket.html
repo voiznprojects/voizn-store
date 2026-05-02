@@ -3,11 +3,8 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>VOIZN | Home</title>
-        <meta
-            name="description"
-            content="VOIZN is a monochrome streetwear label with clean silhouettes, premium layers, and limited drops."
-        />
+        <title>VOIZN | Basket</title>
+        <meta name="description" content="Review your VOIZN basket before Shopify checkout." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
@@ -50,7 +47,7 @@
                 <a class="icon-link" href="#" aria-label="Profile">
                     <span class="icon-user" aria-hidden="true"></span>
                 </a>
-                <a class="icon-link" href="#" aria-label="Basket">
+                <a class="icon-link" href="basket.html" aria-label="Basket">
                     <span class="icon-bag" aria-hidden="true"></span>
                 </a>
             </div>
@@ -67,7 +64,7 @@
                     <span class="icon-search" aria-hidden="true"></span>
                     <input type="search" placeholder="Search" aria-label="Search" />
                 </form>
-                <a class="nav-link active" href="index.html">Home</a>
+                <a class="nav-link" href="index.html">Home</a>
                 <a class="nav-link" href="latest-drop.html">Latest Drop</a>
                 <div class="nav-item has-dropdown">
                     <button class="nav-link nav-button dropdown-trigger" type="button" aria-expanded="false">Collections</button>
@@ -87,61 +84,23 @@
         </header>
 
         <main>
-            <section class="hero-banner hero-home">
-                <div class="hero-overlay"></div>
-                <div class="hero-content reveal">
-                    <p class="hero-kicker">Spring 26 / Monochrome Essentials</p>
-                    <h1>STYLE YOUR STORY</h1>
-                    <p class="hero-description">
-                        Build your own identity through clean silhouettes, monochrome essentials, and statement layers designed for every part of your story.
-                    </p>
-                    <a class="cta-button" href="latest-drop.html">Shop Now</a>
+            <section class="page-hero compact-hero reveal">
+                <p class="hero-kicker">Basket</p>
+                <h1>YOUR BAG.</h1>
+                <p class="hero-description">Review your selected items, adjust quantity, then continue to secure Shopify checkout.</p>
+            </section>
+
+            <section class="basket-shell">
+                <div id="basket-empty" class="support-card" hidden>
+                    <h2>Your basket is empty.</h2>
+                    <p>Add products from the store to see them here before checkout.</p>
                 </div>
-            </section>
-
-            <section class="section-block intro-strip">
-                <p>New drop live now. Premium fleece. Clean outerwear. Monochrome staples.</p>
-            </section>
-
-            <section class="section-block section-heading-block">
-                <div class="section-heading">
-                    <p class="eyebrow">Featured</p>
-                    <h2>Core pieces made to carry the whole season.</h2>
-                </div>
-            </section>
-
-            <section class="feature-grid">
-                <article class="feature-tile tile-drop reveal">
-                    <div class="feature-copy">
-                        <p class="eyebrow">Latest Drop</p>
-                        <h3>Ghostline delivery.</h3>
-                        <a class="tile-link" href="latest-drop.html">Shop Drop</a>
-                    </div>
-                </article>
-                <article class="feature-tile tile-outerwear reveal">
-                    <div class="feature-copy">
-                        <p class="eyebrow">Outerwear</p>
-                        <h3>Sharp jackets with a winter edge.</h3>
-                        <a class="tile-link" href="jackets.html">View Jackets</a>
-                    </div>
-                </article>
-                <article class="feature-tile tile-basics reveal">
-                    <div class="feature-copy">
-                        <p class="eyebrow">Essentials</p>
-                        <h3>Tees, hoodies, and bottoms without the noise.</h3>
-                        <a class="tile-link" href="collections.html">Browse All</a>
-                    </div>
-                </article>
-            </section>
-
-            <section class="section-block manifesto-block">
-                <div class="manifesto-card reveal">
-                    <p class="eyebrow">Why VOIZN</p>
-                    <h2>Not overloaded. Not trend-chasing. Just focused product and a cleaner retail feel.</h2>
-                    <p>
-                        VOIZN takes the energy of modern sports and streetwear storefronts, then pares it back into a darker, sharper identity.
-                    </p>
-                </div>
+                <section id="basket-items" class="basket-items"></section>
+                <aside class="basket-summary">
+                    <p class="footer-title">Order Total</p>
+                    <p id="basket-total" class="basket-total">£0.00</p>
+                    <button id="basket-checkout" class="cta-button" type="button">Continue To Checkout</button>
+                </aside>
             </section>
         </main>
 

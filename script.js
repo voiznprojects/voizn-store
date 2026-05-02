@@ -290,7 +290,8 @@ const setupFavorites = () => {
       favoriteButton.setAttribute("aria-pressed", String(isFavorited));
     };
 
-    favoriteButton.addEventListener("click", () => {
+    favoriteButton.addEventListener("click", (event) => {
+      event.stopPropagation();
       if (!getActiveUser()) {
         window.location.replace("login.html");
         return;
