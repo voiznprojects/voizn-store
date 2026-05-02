@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>VOIZN | Private Access</title>
+        <meta name="description" content="Private access sign in for VOIZN." />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Oswald:wght@400;500;700&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body data-auth-page="true">
+        <main class="auth-page">
+            <section class="auth-shell">
+                <div class="auth-visual">
+                    <p class="hero-kicker">Private Access / VOIZN</p>
+                    <h1>WELCOME TO VOIZN</h1>
+                    <p class="hero-description">
+                        Sign in to access the private storefront, current drops, and protected collection pages.
+                    </p>
+                </div>
+                <div class="auth-panel">
+                    <p class="eyebrow">Sign In</p>
+                    <h2>Access Required</h2>
+                    <p class="auth-copy">Enter your username and password to continue into the website.</p>
+                    <form class="auth-form" id="login-form">
+                        <label class="auth-field">
+                            <span>Username</span>
+                            <input id="login-username" type="text" autocomplete="username" required />
+                        </label>
+                        <label class="auth-field">
+                            <span>Password</span>
+                            <input id="login-password" type="password" autocomplete="current-password" required />
+                        </label>
+                        <p class="auth-error" id="login-error" aria-live="polite"></p>
+                        <button class="auth-button" type="submit">Enter Website</button>
+                    </form>
+                </div>
+            </section>
+        </main>
+
+        <script src="script.js"></script>
+    </body>
+</html>
