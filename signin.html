@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>VOIZN | Sign In</title>
+        <meta name="description" content="Sign in to the private VOIZN early access website." />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Oswald:wght@400;500;700&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body data-auth-page="true" data-page="signin">
+        <main class="auth-page compact-auth-page">
+            <section class="compact-auth-card">
+                <div class="compact-auth-head">
+                    <p class="eyebrow">VOIZN / Early Access</p>
+                    <h1>Sign In</h1>
+                    <p class="auth-copy">Enter your email and password to access the private VOIZN website.</p>
+                </div>
+
+                <form class="auth-form compact-auth-form" id="signin-form">
+                    <label class="auth-field auth-field-minimal">
+                        <span>Email</span>
+                        <input id="signin-email" type="email" autocomplete="email" required />
+                    </label>
+                    <label class="auth-field auth-field-minimal">
+                        <span>Password</span>
+                        <input id="signin-password" type="password" autocomplete="current-password" required />
+                    </label>
+                    <a class="forgot-link forgot-link-stacked" href="reset-password.html">Forgot password?</a>
+                    <p class="auth-message" id="signin-message" aria-live="polite"></p>
+                    <button class="auth-button compact-auth-button" type="submit">Login</button>
+                </form>
+
+                <p class="compact-auth-switch-copy">
+                    Don’t have an account?
+                    <a href="signup.html">Sign up</a>
+                </p>
+
+                <div class="compact-auth-divider">
+                    <span>Sign in with</span>
+                </div>
+
+                <div class="compact-oauth-grid">
+                    <button class="oauth-button compact-oauth-button" type="button" data-oauth-provider="google">Google</button>
+                    <button class="oauth-button compact-oauth-button" type="button" data-oauth-provider="apple">Apple</button>
+                </div>
+                <p class="auth-message auth-message-info" id="oauth-message" aria-live="polite"></p>
+            </section>
+        </main>
+
+        <script src="script.js"></script>
+    </body>
+</html>

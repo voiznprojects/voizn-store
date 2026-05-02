@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>VOIZN | Request Access</title>
+        <meta name="description" content="Create a VOIZN account and request early access." />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Oswald:wght@400;500;700&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body data-auth-page="true" data-page="signup">
+        <main class="auth-page compact-auth-page">
+            <section class="compact-auth-card signup-auth-card">
+                <div class="compact-auth-head">
+                    <p class="eyebrow">VOIZN / Request Access</p>
+                    <h1>Create Account</h1>
+                    <p class="auth-copy">Create your account, verify your email, then set your password for manual VOIZN approval.</p>
+                </div>
+
+                <section data-signup-frame="details">
+                    <form class="auth-form compact-auth-form" id="signup-start-form">
+                        <label class="auth-field auth-field-minimal">
+                            <span>Name</span>
+                            <input id="signup-name" type="text" autocomplete="name" required />
+                        </label>
+                        <label class="auth-field auth-field-minimal">
+                            <span>Email</span>
+                            <input id="signup-email" type="email" autocomplete="email" required />
+                        </label>
+                        <label class="auth-field auth-field-minimal">
+                            <span>Country</span>
+                            <select id="signup-country" class="auth-select" required>
+                                <option value="">Select your country</option>
+                                <option value="United Kingdom">United Kingdom</option>
+                                <option value="United States">United States</option>
+                                <option value="Canada">Canada</option>
+                                <option value="France">France</option>
+                                <option value="Germany">Germany</option>
+                                <option value="Ireland">Ireland</option>
+                                <option value="Netherlands">Netherlands</option>
+                                <option value="Spain">Spain</option>
+                                <option value="Sweden">Sweden</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </label>
+                        <p class="auth-message" id="signup-message" aria-live="polite"></p>
+                        <button class="auth-button compact-auth-button" type="submit">Continue</button>
+                    </form>
+                </section>
+
+                <section data-signup-frame="verify" hidden>
+                    <div class="compact-auth-head compact-auth-subhead">
+                        <h2>Enter Code</h2>
+                        <p class="auth-copy">Enter the verification code sent to your email address.</p>
+                    </div>
+                    <form class="auth-form compact-auth-form" id="verify-code-form">
+                        <label class="auth-field auth-field-minimal">
+                            <span>Email</span>
+                            <input id="verify-email" type="email" autocomplete="email" required />
+                        </label>
+                        <label class="auth-field auth-field-minimal">
+                            <span>Verification Code</span>
+                            <input id="verification-code" type="text" inputmode="numeric" maxlength="6" required />
+                        </label>
+                        <div class="verification-actions">
+                            <button class="auth-button compact-auth-button" type="submit">Verify Code</button>
+                            <button class="entry-secondary-button compact-secondary-button" id="resend-code-button" type="button">Resend</button>
+                        </div>
+                        <p class="auth-message" id="verify-message" aria-live="polite"></p>
+                    </form>
+                </section>
+
+                <section data-signup-frame="password" hidden>
+                    <div class="compact-auth-head compact-auth-subhead">
+                        <h2>Create Password</h2>
+                        <p class="auth-copy">Choose a secure password to finish requesting VOIZN early access.</p>
+                    </div>
+                    <form class="auth-form compact-auth-form" id="set-password-form">
+                        <input id="setup-token" type="hidden" />
+                        <label class="auth-field auth-field-minimal">
+                            <span>Password</span>
+                            <input id="create-password" type="password" autocomplete="new-password" minlength="8" required />
+                        </label>
+                        <label class="auth-field auth-field-minimal">
+                            <span>Confirm Password</span>
+                            <input id="confirm-password" type="password" autocomplete="new-password" minlength="8" required />
+                        </label>
+                        <p class="auth-message" id="password-message" aria-live="polite"></p>
+                        <button class="auth-button compact-auth-button" type="submit">Create Password</button>
+                    </form>
+                </section>
+
+                <p class="compact-auth-switch-copy">
+                    Already have an account?
+                    <a href="signin.html">Sign in</a>
+                </p>
+            </section>
+        </main>
+
+        <script src="script.js"></script>
+    </body>
+</html>

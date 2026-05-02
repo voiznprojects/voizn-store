@@ -3,8 +3,8 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>VOIZN | Private Access</title>
-        <meta name="description" content="Private access sign in for VOIZN." />
+        <title>VOIZN | Early Access</title>
+        <meta name="description" content="Early access entry page for VOIZN." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
@@ -13,32 +13,44 @@
         />
         <link rel="stylesheet" href="style.css" />
     </head>
-    <body data-auth-page="true">
-        <main class="auth-page">
-            <section class="auth-shell">
+    <body data-auth-page="true" data-page="login">
+        <main class="auth-page entry-auth-page">
+            <section class="auth-shell entry-auth-shell">
                 <div class="auth-visual">
-                    <p class="hero-kicker">Private Access / VOIZN</p>
-                    <h1>WELCOME TO VOIZN</h1>
+                    <p class="hero-kicker">Early Access / VOIZN</p>
+                    <h1>PRIVATE WEBSITE ENTRY.</h1>
                     <p class="hero-description">
-                        Sign in to access the private storefront, current drops, and protected collection pages.
+                        VOIZN is currently protected for early access members. Enter with your approved account or request access if you do not have one yet.
                     </p>
                 </div>
-                <div class="auth-panel">
-                    <p class="eyebrow">Sign In</p>
-                    <h2>Access Required</h2>
-                    <p class="auth-copy">Enter your username and password to continue into the website.</p>
-                    <form class="auth-form" id="login-form">
-                        <label class="auth-field">
-                            <span>Username</span>
-                            <input id="login-username" type="text" autocomplete="username" required />
+
+                <div class="auth-panel entry-auth-panel">
+                    <p class="eyebrow">Welcome</p>
+                    <h2>Enter The Website</h2>
+                    <p class="auth-copy">
+                        Enter your early access username and password to continue. If you do not have entry credentials yet, request access first.
+                    </p>
+
+                    <form class="auth-form entry-auth-form" id="entry-form">
+                        <label class="auth-field auth-field-boxy">
+                            <span>Early Access Username</span>
+                            <input id="entry-username" type="text" autocomplete="username" required />
                         </label>
-                        <label class="auth-field">
-                            <span>Password</span>
-                            <input id="login-password" type="password" autocomplete="current-password" required />
+                        <label class="auth-field auth-field-boxy">
+                            <span>Early Access Password</span>
+                            <input id="entry-password" type="password" autocomplete="current-password" required />
                         </label>
-                        <p class="auth-error" id="login-error" aria-live="polite"></p>
-                        <button class="auth-button" type="submit">Enter Website</button>
+                        <p class="auth-message" id="entry-message" aria-live="polite"></p>
+                        <div class="entry-auth-actions">
+                            <button class="auth-button entry-auth-submit" type="submit">Enter Website</button>
+                            <a class="entry-secondary-button" href="signup.html">Request Access</a>
+                        </div>
                     </form>
+
+                    <div class="entry-auth-note">
+                        <p class="product-tag">Early Access</p>
+                        <p>The website entry gate is separate from your VOIZN account. Once inside, approved members can sign in with their personal account.</p>
+                    </div>
                 </div>
             </section>
         </main>

@@ -3,8 +3,11 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>VOIZN | Profile</title>
-        <meta name="description" content="View your VOIZN account, access status, favourites, and order summary." />
+        <title>VOIZN | Access Approvals</title>
+        <meta
+            name="description"
+            content="Review and manage pending private access approvals for VOIZN."
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
@@ -13,7 +16,7 @@
         />
         <link rel="stylesheet" href="style.css" />
     </head>
-    <body data-page="profile">
+    <body data-protected="true" data-page="admin-approvals">
         <div class="topbar">
             <div class="topbar-marquee">
                 <div class="topbar-track">
@@ -85,98 +88,40 @@
 
         <main>
             <section class="page-hero compact-hero reveal">
-                <p class="hero-kicker">Account</p>
-                <h1>YOUR PROFILE.</h1>
+                <p class="hero-kicker">Admin</p>
+                <h1>ACCESS APPROVALS.</h1>
                 <p class="hero-description">
-                    Everything tied to your real VOIZN account lives here, from access status to saved favourites and order history.
+                    Review every pending signup, grant access to approved members, or reject requests that should not enter the private website.
                 </p>
             </section>
 
-            <section id="profile-logged-out" class="section-block" hidden>
-                <article class="support-card reveal profile-empty-shell">
-                    <p class="product-tag">Private access required</p>
-                    <h2>Log in to view your account.</h2>
-                    <p>
-                        Sign in to see your VOIZN details, favourites, approval status, and order history.
-                    </p>
-                    <a class="cta-button" href="login.html">Go To Login</a>
-                </article>
-            </section>
-
-            <section id="profile-logged-in" class="section-block profile-shell" hidden>
-                <div class="profile-overview-grid">
-                    <article class="profile-card profile-card-hero reveal">
-                        <p class="product-tag">Private Access</p>
-                        <h2 data-profile-name>VOIZN Member</h2>
-                        <p data-profile-email class="hero-description">email@voizn.store</p>
-                        <span class="profile-badge" id="profile-account-badge">Private Access Approved</span>
-                    </article>
-
-                    <article class="profile-card profile-stat-card reveal">
-                        <p class="product-tag">Orders</p>
-                        <h3 id="profile-orders-count">0</h3>
-                        <p id="profile-last-order">No purchases yet</p>
-                    </article>
-
-                    <article class="profile-card profile-stat-card reveal">
-                        <p class="product-tag">Favourites</p>
-                        <h3 id="profile-favorites-count">0</h3>
-                        <p id="profile-favorites-summary">No favourites saved yet.</p>
-                    </article>
-                </div>
-
-                <div class="profile-layout-grid">
+            <section class="section-block orders-shell">
+                <div class="admin-approvals-layout">
                     <article class="profile-card reveal">
                         <div class="profile-card-heading">
-                            <p class="product-tag">Account Details</p>
-                            <h3>Identity</h3>
+                            <p class="product-tag">Pending Requests</p>
+                            <h2>Approval Queue</h2>
                         </div>
-                        <dl class="profile-detail-grid">
-                            <div>
-                                <dt>Name</dt>
-                                <dd data-profile-name></dd>
-                            </div>
-                            <div>
-                                <dt>Email</dt>
-                                <dd data-profile-email></dd>
-                            </div>
-                            <div>
-                                <dt>Account Created</dt>
-                                <dd id="profile-created"></dd>
-                            </div>
-                            <div>
-                                <dt>Country / Location</dt>
-                                <dd id="profile-country"></dd>
-                            </div>
-                            <div>
-                                <dt>Access Status</dt>
-                                <dd id="profile-access"></dd>
-                            </div>
-                            <div>
-                                <dt>Login Method</dt>
-                                <dd id="profile-method"></dd>
-                            </div>
-                        </dl>
+                        <p id="admin-approvals-empty" class="empty-state-copy" hidden>
+                            No access approvals are waiting right now.
+                        </p>
+                        <div id="admin-approvals-list" class="approval-list approval-list-page"></div>
                     </article>
 
-                    <article class="profile-card reveal">
+                    <aside class="profile-card reveal admin-approval-info">
                         <div class="profile-card-heading">
-                            <p class="product-tag">Order History Summary</p>
-                            <h3>Recent Orders</h3>
+                            <p class="product-tag">Admin Notes</p>
+                            <h3>How it works</h3>
                         </div>
-                        <div id="profile-order-summary" class="order-summary-stack"></div>
-                        <a class="tile-link profile-link-button" href="orders.html">View All Orders</a>
-                    </article>
+                        <p class="empty-state-copy">
+                            Approving a user switches their access to approved and sends them an email letting them know they can now sign in.
+                        </p>
+                        <p class="empty-state-copy">
+                            Rejecting a user keeps the account in the system, but blocks private website access until you choose to approve them later.
+                        </p>
+                        <a class="tile-link profile-link-button" href="orders.html">Back To Orders</a>
+                    </aside>
                 </div>
-
-                <article class="profile-card reveal">
-                    <div class="profile-card-heading">
-                        <p class="product-tag">Your Favourites</p>
-                        <h3>Saved Pieces</h3>
-                    </div>
-                    <div id="profile-favorites-preview" class="mini-favorites-grid"></div>
-                    <a class="tile-link profile-link-button" href="favorites.html">Open All Favourites</a>
-                </article>
             </section>
         </main>
 

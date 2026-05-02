@@ -4,7 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>VOIZN | Your Orders</title>
-        <meta name="description" content="View your VOIZN orders." />
+        <meta name="description" content="View your VOIZN order history and detailed order information." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
@@ -13,7 +13,7 @@
         />
         <link rel="stylesheet" href="style.css" />
     </head>
-    <body data-protected="true">
+    <body data-protected="true" data-page="orders">
         <div class="topbar">
             <div class="topbar-marquee">
                 <div class="topbar-track">
@@ -47,7 +47,7 @@
                 <a class="icon-link" href="#" aria-label="Profile">
                     <span class="icon-user" aria-hidden="true"></span>
                 </a>
-                <a class="icon-link" href="#" aria-label="Basket">
+                <a class="icon-link" href="basket.html" aria-label="Basket">
                     <span class="icon-bag" aria-hidden="true"></span>
                 </a>
             </div>
@@ -87,14 +87,43 @@
             <section class="page-hero compact-hero reveal">
                 <p class="hero-kicker">Account</p>
                 <h1>YOUR ORDERS.</h1>
-                <p class="hero-description">Order history will appear here once purchases are connected to the store flow.</p>
+                <p class="hero-description">
+                    Open any order to view products purchased, purchase date, delivery date, discount code, and the global order number.
+                </p>
             </section>
 
-            <section class="section-block">
-                <article class="support-card reveal">
-                    <h2>No orders yet.</h2>
-                    <p>Your future purchases, status updates, and tracking details will appear here.</p>
-                </article>
+            <section class="section-block orders-shell">
+                <div class="orders-layout">
+                    <div class="orders-column reveal">
+                        <div class="profile-card">
+                            <div class="profile-card-heading">
+                                <p class="product-tag">History</p>
+                                <h2>Orders</h2>
+                            </div>
+                            <p id="orders-empty" class="empty-state-copy" hidden>
+                                No orders have been placed yet.
+                            </p>
+                            <div id="orders-list" class="orders-list"></div>
+                        </div>
+
+                        <div id="admin-approval-section" class="profile-card admin-approval-card reveal" hidden>
+                            <div class="profile-card-heading">
+                                <p class="product-tag">Admin</p>
+                                <h3>Pending Access Requests</h3>
+                            </div>
+                            <div id="admin-pending-list" class="approval-list"></div>
+                        </div>
+                    </div>
+
+                    <aside class="profile-card orders-detail-panel reveal" id="order-detail-panel">
+                        <div id="orders-detail-empty" class="orders-detail-empty">
+                            <p class="product-tag">Order Details</p>
+                            <h3>Select an order.</h3>
+                            <p>Click any order on the left to view the full breakdown.</p>
+                        </div>
+                        <div id="orders-detail-content" hidden></div>
+                    </aside>
+                </div>
             </section>
         </main>
 
