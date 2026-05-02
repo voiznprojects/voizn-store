@@ -96,14 +96,27 @@ const applyTheme = (theme) => {
 applyTheme(getSavedTheme());
 
 async function apiFetch(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+      ...options,
+    });
+  } catch (error) {
+    const networkError = new Error(
+      ["127.0.0.1", "localhost"].includes(window.location.hostname)
+        ? "VOIZN backend is offline. Start the backend server and try again."
+        : "VOIZN is unable to reach the live account server right now. Please try again shortly.",
+    );
+    networkError.status = 0;
+    networkError.code = "network_unavailable";
+    networkError.cause = error;
+    throw networkError;
+  }
 
   let data = null;
   try {
