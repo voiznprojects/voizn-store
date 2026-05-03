@@ -1,5 +1,8 @@
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { env } from "../config/env.js";
+
+const resend = env.resendApiKey ? new Resend(env.resendApiKey) : null;
 
 const transporter =
   env.smtp.host && env.smtp.port && env.smtp.user && env.smtp.pass
@@ -15,6 +18,22 @@ const transporter =
     : null;
 
 async function deliverEmail({ to, subject, text, html }) {
+  if (resend) {
+    const result = await resend.emails.send({
+      from: env.emailFrom,
+      to,
+      subject,
+      text,
+      html,
+    });
+
+    if (result?.error) {
+      throw new Error(result.error.message || "Resend failed to deliver the email.");
+    }
+
+    return { delivered: true, provider: "resend", result };
+  }
+
   if (!transporter) {
     console.log("[voizn-mail-fallback]", { to, subject, text });
     return { delivered: false, preview: text };
@@ -28,7 +47,7 @@ async function deliverEmail({ to, subject, text, html }) {
     html,
   });
 
-  return { delivered: true };
+  return { delivered: true, provider: "smtp" };
 }
 
 export function sendVerificationEmail(email, code) {

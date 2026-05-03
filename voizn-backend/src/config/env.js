@@ -8,6 +8,7 @@ export const env = {
     process.env.EMAIL_FROM ||
     process.env.SMTP_FROM ||
     "contact@voizn.store",
+  resendApiKey: process.env.RESEND_API_KEY || "",
   frontendOrigins: (
     process.env.FRONTEND_ORIGINS ||
     "http://127.0.0.1:8080,http://localhost:8080,https://voizn.store,https://www.voizn.store"
