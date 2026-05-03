@@ -1,18 +1,13 @@
-import "dotenv/config";
-import express from "express";
-import cors from "cors";
+import { app, env } from "./app.js";
+import { ensureSeedData } from "./services/userService.js";
 
-const app = express();
-
-app.use(cors());
-app.use(express.json());
-
-app.get("/", (req, res) => {
-  res.json({ message: "Voizn backend running." });
-});
-
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+ensureSeedData()
+  .then(() => {
+    app.listen(env.port, "0.0.0.0", () => {
+      console.log(`VOIZN backend listening on port ${env.port}`);
+    });
+  })
+  .catch((error) => {
+    console.error("Failed to start VOIZN backend:", error);
+    process.exit(1);
+  });
