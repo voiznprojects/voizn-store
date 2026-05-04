@@ -3,58 +3,48 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>VOIZN | Early Access</title>
-        <meta name="description" content="Early access entry page for VOIZN." />
+        <title>VOIZN | Access</title>
+        <meta name="description" content="Sign in or request access to the private VOIZN website." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
             href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Oswald:wght@400;500;700&display=swap"
             rel="stylesheet"
         />
-        <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="assets/css/style.css" />
     </head>
     <body data-auth-page="true" data-page="login">
         <main class="auth-page entry-auth-page">
             <section class="auth-shell entry-auth-shell">
                 <div class="auth-visual">
-                    <p class="hero-kicker">Early Access / VOIZN</p>
+                    <p class="hero-kicker">Private Access / VOIZN</p>
                     <h1>PRIVATE WEBSITE ENTRY.</h1>
                     <p class="hero-description">
-                        VOIZN is currently protected for early access members. Enter with your approved account or request access if you do not have one yet.
+                        Sign in with your VOIZN account or request access to begin the approval process.
                     </p>
                 </div>
 
-                <div class="auth-panel entry-auth-panel">
+                <div class="auth-panel entry-auth-panel entry-auth-panel-static">
                     <p class="eyebrow">Welcome</p>
-                    <h2>Enter The Website</h2>
+                    <h2>Enter The Private VOIZN Space</h2>
                     <p class="auth-copy">
-                        Enter your early access username and password to continue. If you do not have entry credentials yet, request access first.
+                        Sign in to access your VOIZN account, saved pieces, and private member experience. If you are new here, request access to begin verification and approval.
                     </p>
 
-                    <form class="auth-form entry-auth-form" id="entry-form">
-                        <label class="auth-field auth-field-boxy">
-                            <span>Early Access Username</span>
-                            <input id="entry-username" type="text" autocomplete="username" required />
-                        </label>
-                        <label class="auth-field auth-field-boxy">
-                            <span>Early Access Password</span>
-                            <input id="entry-password" type="password" autocomplete="current-password" required />
-                        </label>
-                        <p class="auth-message" id="entry-message" aria-live="polite"></p>
-                        <div class="entry-auth-actions">
-                            <button class="auth-button entry-auth-submit" type="submit">Enter Website</button>
-                            <a class="entry-secondary-button" href="signup.html">Request Access</a>
-                        </div>
-                    </form>
+                    <div class="entry-auth-actions entry-auth-actions-stacked">
+                        <a class="auth-button entry-auth-submit" href="signin.html">Enter VOIZN</a>
+                        <a class="entry-secondary-button" href="signup.html">Request Access</a>
+                    </div>
 
                     <div class="entry-auth-note">
-                        <p class="product-tag">Early Access</p>
-                        <p>The website entry gate is separate from your VOIZN account. Once inside, approved members can sign in with their personal account.</p>
+                        <p class="product-tag">Private Website</p>
+                        <p>Access is tied to your personal VOIZN account. No public credentials are issued on this page.</p>
                     </div>
                 </div>
             </section>
         </main>
 
-        <script src="script.js"></script>
+        <script src="assets/js/script.js"></script>
     </body>
 </html>
+

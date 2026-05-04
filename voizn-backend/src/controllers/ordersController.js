@@ -21,8 +21,11 @@ export const createOrder = asyncHandler(async (request, response) => {
 
   const normalizedItems = items.map((item) => ({
     productId: item.productId,
+    variantId: item.variantId || null,
     productName: item.productName,
     variant: item.variant || null,
+    color: item.color || null,
+    size: item.size || null,
     quantity: Number(item.quantity),
     unitPrice: Number(item.unitPrice),
   }));

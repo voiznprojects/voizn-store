@@ -1,13 +1,14 @@
 import { prisma } from "../lib/prisma.js";
+import { env } from "../config/env.js";
 import {
   approveUser,
   loginWithEmailPassword,
   rejectUser,
+  resendSignupCode,
   resetPassword,
   setPasswordAfterVerification,
   startPasswordReset,
   startSignup,
-  verifyPasswordResetCode,
   verifySignupCode,
 } from "../services/authService.js";
 import { sanitizeUser } from "../services/userService.js";
@@ -19,7 +20,7 @@ function setSessionCookie(response, token) {
   response.cookie("voizn_session", token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: !["127.0.0.1", "localhost"].includes(new URL(env.frontendBaseUrl).hostname),
     maxAge: SESSION_MAX_AGE_MS,
   });
 }
@@ -43,6 +44,17 @@ export const signupVerifyCode = asyncHandler(async (request, response) => {
   }
 
   const result = await verifySignupCode({ email, code });
+  response.json(result);
+});
+
+export const signupResendCode = asyncHandler(async (request, response) => {
+  const { email } = request.body || {};
+  if (!email) {
+    jsonError(response, 400, "Email is required.", "validation_error");
+    return;
+  }
+
+  const result = await resendSignupCode({ email });
   response.json(result);
 });
 
@@ -70,17 +82,6 @@ export const passwordResetStart = asyncHandler(async (request, response) => {
   }
 
   const result = await startPasswordReset({ email });
-  response.json(result);
-});
-
-export const passwordResetVerifyCode = asyncHandler(async (request, response) => {
-  const { email, code } = request.body || {};
-  if (!email || !code) {
-    jsonError(response, 400, "Email and reset code are required.", "validation_error");
-    return;
-  }
-
-  const result = await verifyPasswordResetCode({ email, code });
   response.json(result);
 });
 
@@ -132,24 +133,6 @@ export const me = asyncHandler(async (request, response) => {
     },
   });
 });
-
-export function googleOauth(_request, response) {
-  jsonError(
-    response,
-    501,
-    "Google login is scaffolded but requires Google OAuth credentials and callback setup.",
-    "oauth_not_configured",
-  );
-}
-
-export function appleOauth(_request, response) {
-  jsonError(
-    response,
-    501,
-    "Apple login is scaffolded but requires Apple OAuth credentials and callback setup.",
-    "oauth_not_configured",
-  );
-}
 
 export const approvePendingUser = asyncHandler(async (request, response) => {
   const targetUserId = request.body?.userId || request.params?.id;

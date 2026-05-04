@@ -38,6 +38,27 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum ProductVisibility {
+  PUBLIC
+  PRIVATE_ACCESS
+}
+
+enum AlertStatus {
+  ACTIVE
+  NOTIFIED
+  CANCELLED
+}
+
+enum AnalyticsEventType {
+  PAGE_VIEW
+  PRODUCT_CLICK
+  ADD_TO_BASKET
+  FAVORITE
+  CHECKOUT
+  DROP_NOTIFY_SIGNUP
+  BACK_IN_STOCK_SIGNUP
+}
+
 model User {
   id                String             @id @default(uuid())
   name              String?
@@ -56,6 +77,9 @@ model User {
   orders            Order[]
   verificationCodes VerificationCode[]
   identities        AuthIdentity[]
+  backInStockAlerts BackInStockAlert[]
+  dropSignups       DropNotificationSignup[]
+  analyticsEvents   AnalyticsEvent[]
   approvedBy        User?              @relation("UserApprovals", fields: [approvedById], references: [id])
   approvedUsers     User[]             @relation("UserApprovals")
 }
@@ -107,6 +131,9 @@ model Order {
   discountCode String?
   purchaseDate DateTime    @default(now())
   deliveryDate DateTime?
+  trackingNumber String?
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
   totalAmount  Decimal     @db.Decimal(10, 2)
   currency     String      @default("GBP")
   createdAt    DateTime    @default(now())
@@ -121,10 +148,133 @@ model OrderItem {
   id          String   @id @default(uuid())
   orderId     String
   productId   String
+  variantId   String?
   productName String
   variant     String?
+  color       String?
+  size        String?
   quantity    Int
   unitPrice   Decimal  @db.Decimal(10, 2)
   createdAt   DateTime @default(now())
   order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Product {
+  id                  String                     @id @default(uuid())
+  slug                String                     @unique
+  shopifyProductId    String?                    @unique
+  name                String
+  category            String
+  description         String?
+  shortDescription    String?
+  price               Decimal                    @db.Decimal(10, 2)
+  currency            String                     @default("GBP")
+  artClass            String?
+  imageUrl            String?
+  materialInfo        String?
+  details             Json?
+  visibility          ProductVisibility          @default(PUBLIC)
+  isLocked            Boolean                    @default(false)
+  releaseDate         DateTime?
+  isActive            Boolean                    @default(true)
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+  variants            ProductVariant[]
+  dropLinks           DropProduct[]
+  backInStockAlerts   BackInStockAlert[]
+  analyticsEvents     AnalyticsEvent[]
+
+  @@index([category])
+}
+
+model ProductVariant {
+  id                String           @id @default(uuid())
+  productId         String
+  sku               String?          @unique
+  shopifyVariantId  String?          @unique
+  shopifyVariantGid String?          @unique
+  title             String
+  color             String?
+  size              String?
+  price             Decimal          @db.Decimal(10, 2)
+  compareAtPrice    Decimal?         @db.Decimal(10, 2)
+  stock             Int              @default(0)
+  isActive          Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  product           Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  backInStockAlerts BackInStockAlert[]
+
+  @@index([productId])
+}
+
+model Drop {
+  id                  String                    @id @default(uuid())
+  slug                String                    @unique
+  title               String
+  description         String?
+  releaseDate         DateTime
+  isLocked            Boolean                   @default(true)
+  isPrivateAccessOnly Boolean                   @default(false)
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  products            DropProduct[]
+  signups             DropNotificationSignup[]
+}
+
+model DropProduct {
+  id        String   @id @default(uuid())
+  dropId    String
+  productId String
+  createdAt DateTime @default(now())
+  drop      Drop     @relation(fields: [dropId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([dropId, productId])
+}
+
+model DropNotificationSignup {
+  id        String   @id @default(uuid())
+  dropId     String
+  userId     String?
+  email      String
+  createdAt  DateTime @default(now())
+  notifiedAt DateTime?
+  drop       Drop     @relation(fields: [dropId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([dropId, email])
+}
+
+model BackInStockAlert {
+  id          String      @id @default(uuid())
+  userId       String?
+  email        String
+  productId    String
+  variantId    String?
+  status       AlertStatus @default(ACTIVE)
+  createdAt    DateTime    @default(now())
+  notifiedAt   DateTime?
+  product      Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant      ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  user         User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([email, productId, variantId])
+}
+
+model AnalyticsEvent {
+  id         String             @id @default(uuid())
+  eventType  AnalyticsEventType
+  userId     String?
+  sessionId  String?
+  productId  String?
+  path       String
+  metadata   Json?
+  createdAt  DateTime           @default(now())
+  user       User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  product    Product?           @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([eventType, createdAt])
+  @@index([productId, createdAt])
+  @@index([userId, createdAt])
 }

@@ -27,10 +27,6 @@ export const env = {
     process.env.FRONTEND_BASE_URL ||
     process.env.FRONTEND_URL ||
     "http://127.0.0.1:5500",
-  admin: {
-    email: process.env.ADMIN_EMAIL || "voiznadmin@voizn.store",
-    password: process.env.ADMIN_PASSWORD || "Access2026!",
-  },
 };
 
 export function isAllowedOrigin(origin) {

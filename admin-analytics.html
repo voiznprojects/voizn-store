@@ -3,8 +3,8 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>VOIZN | Favourites</title>
-        <meta name="description" content="View your saved VOIZN favourites." />
+        <title>VOIZN | Analytics</title>
+        <meta name="description" content="View VOIZN private store analytics, engagement, and conversion activity." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
@@ -13,7 +13,7 @@
         />
         <link rel="stylesheet" href="assets/css/style.css" />
     </head>
-    <body data-protected="true" data-page="favorites">
+    <body data-page="admin-analytics" data-protected="true">
         <div class="topbar">
             <div class="topbar-marquee">
                 <div class="topbar-track">
@@ -36,7 +36,6 @@
                 </div>
             </div>
         </div>
-
         <header class="site-header">
             <div class="header-left">
                 <form class="search-box" role="search">
@@ -44,21 +43,14 @@
                     <input type="search" placeholder="Search" aria-label="Search" />
                 </form>
                 <a class="utility-link" href="support.html">Support</a>
-                <a class="icon-link" href="#" aria-label="Profile">
-                    <span class="icon-user" aria-hidden="true"></span>
-                </a>
-                <a class="icon-link" href="#" aria-label="Basket">
-                    <span class="icon-bag" aria-hidden="true"></span>
-                </a>
+                <a class="icon-link" href="#" aria-label="Profile"><span class="icon-user" aria-hidden="true"></span></a>
+                <a class="icon-link" href="basket.html" aria-label="Basket"><span class="icon-bag" aria-hidden="true"></span></a>
             </div>
-
             <a class="brand" href="index.html">VOIZN</a>
-
             <button class="menu-toggle" type="button" aria-expanded="false" aria-label="Open menu">
                 <span></span>
                 <span></span>
             </button>
-
             <nav class="site-nav">
                 <form class="search-box" role="search">
                     <span class="icon-search" aria-hidden="true"></span>
@@ -85,24 +77,97 @@
 
         <main>
             <section class="page-hero compact-hero reveal">
-                <p class="hero-kicker">Account</p>
-                <h1>YOUR FAVOURITES.</h1>
-                <p class="hero-description">Saved pieces stay here, ready for your next visit.</p>
+                <p class="hero-kicker">Admin Analytics</p>
+                <h1>STORE SIGNALS.</h1>
+                <p class="hero-description">
+                    A live view of how private visitors move through products, favourites, basket actions, and checkout intent.
+                </p>
             </section>
 
-            <section class="section-block">
-                <p id="favorites-empty" class="auth-copy" hidden>You have not favourited any pieces yet.</p>
+            <section class="analytics-controls reveal">
+                <form id="analytics-filters" class="analytics-filters">
+                    <div class="analytics-range-buttons">
+                        <button type="button" class="analytics-filter-chip" data-analytics-range="today">Today</button>
+                        <button type="button" class="analytics-filter-chip" data-analytics-range="7d">7 Days</button>
+                        <button type="button" class="analytics-filter-chip" data-analytics-range="30d">30 Days</button>
+                    </div>
+                    <div class="analytics-filter-grid">
+                        <label class="analytics-filter-field">
+                            <span>Range</span>
+                            <select id="analytics-range">
+                                <option value="today">Today</option>
+                                <option value="7d" selected>7 days</option>
+                                <option value="30d">30 days</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </label>
+                        <label class="analytics-filter-field">
+                            <span>Event type</span>
+                            <select id="analytics-event-type">
+                                <option value="all">All activity</option>
+                                <option value="PAGE_VIEW">Page views</option>
+                                <option value="PRODUCT_CLICK">Product clicks</option>
+                                <option value="ADD_TO_BASKET">Add to basket</option>
+                                <option value="FAVORITE">Favourites</option>
+                                <option value="CHECKOUT">Checkout</option>
+                                <option value="SIGNUP">Signups</option>
+                                <option value="APPROVAL_REQUEST">Approvals</option>
+                                <option value="ORDER_PLACED">Orders</option>
+                                <option value="BACK_IN_STOCK_SIGNUP">Back-in-stock signups</option>
+                                <option value="DROP_NOTIFICATION_SIGNUP">Drop notification signups</option>
+                            </select>
+                        </label>
+                        <label class="analytics-filter-field">
+                            <span>Search</span>
+                            <input id="analytics-search" type="search" placeholder="Email, product, order, path, event" />
+                        </label>
+                        <label class="analytics-filter-field">
+                            <span>From</span>
+                            <input id="analytics-from" type="date" />
+                        </label>
+                        <label class="analytics-filter-field">
+                            <span>To</span>
+                            <input id="analytics-to" type="date" />
+                        </label>
+                    </div>
+                </form>
             </section>
 
-            <section id="favorites-grid" class="product-grid page-grid"></section>
+            <section id="analytics-summary-grid" class="analytics-grid reveal"></section>
+
+            <section class="analytics-layout reveal">
+                <article class="analytics-stack-card">
+                    <p class="product-tag">Product Intelligence</p>
+                    <h2>Product Performance</h2>
+                    <div class="analytics-table-wrap">
+                        <table class="analytics-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Views</th>
+                                    <th>Clicks</th>
+                                    <th>Add To Basket</th>
+                                    <th>Favourites</th>
+                                    <th>Checkout</th>
+                                    <th>Orders</th>
+                                    <th>Conversion</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analytics-products-body"></tbody>
+                        </table>
+                    </div>
+                </article>
+                <article class="analytics-stack-card">
+                    <p class="product-tag">High Intent</p>
+                    <h2>Recent High-Intent Activity</h2>
+                    <div id="analytics-activity-feed"></div>
+                </article>
+            </section>
         </main>
 
         <footer class="site-footer">
             <div class="footer-branding">
-                <div class="footer-country">
-                    <span class="country-icon" aria-hidden="true"></span>
-                    <span>United Kingdom</span>
-                </div>
+                <div class="footer-country"><span class="country-icon" aria-hidden="true"></span><span>United Kingdom</span></div>
                 <a class="footer-brand" href="https://voizn.store">voizn.store</a>
                 <p class="footer-copy">&copy; 2026 VOIZN. All rights reserved.</p>
             </div>
@@ -143,4 +208,3 @@
         <script src="assets/js/shopify.js?v=2"></script>
     </body>
 </html>
-

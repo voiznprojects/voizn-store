@@ -6,6 +6,11 @@
   const BASKET_STORAGE_KEY = "voizn-basket-items";
   const AUTH_STORAGE_KEY = "voizn-authenticated-user";
   const FAVORITES_STORAGE_KEY_PREFIX = "voizn-favorites";
+  const API_BASE_URL =
+    (window.VOIZN_CONFIG && window.VOIZN_CONFIG.apiBaseUrl) ||
+    (["127.0.0.1", "localhost"].includes(window.location.hostname)
+      ? "http://127.0.0.1:4000"
+      : "https://api.voizn.store");
   const PRODUCT_BINDINGS = {
     "Ghostline Hoodie": {
       handle: "ghostline-hoodie",
@@ -53,6 +58,78 @@
 
   let productModalElements = null;
 
+  async function backendRequest(path, options) {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(options?.headers || {}),
+      },
+      ...options,
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || payload?.ok === false) {
+      throw new Error(payload?.message || "VOIZN catalog request failed.");
+    }
+    return payload;
+  }
+
+  function convertBackendProductToProductPageShape(product) {
+    return {
+      id: product.id,
+      title: product.name,
+      handle: product.slug,
+      shopifyProductId: product.shopifyProductId || "",
+      description: product.description,
+      images: {
+        edges: product.imageUrl
+          ? [{ node: { url: product.imageUrl, altText: product.name } }]
+          : [],
+      },
+      options: [
+        ...(product.options?.colors?.length
+          ? [
+              {
+                name: "Color",
+                optionValues: product.options.colors.map((name) => ({ name })),
+              },
+            ]
+          : []),
+        ...(product.options?.sizes?.length
+          ? [
+              {
+                name: "Size",
+                optionValues: product.options.sizes.map((name) => ({ name })),
+              },
+            ]
+          : []),
+      ],
+      variants: {
+        edges: (product.variants || []).map((variant) => ({
+          node: {
+            id: variant.id,
+            shopifyVariantId: variant.shopifyVariantId || "",
+            shopifyVariantGid: variant.shopifyVariantGid || "",
+            title: variant.title,
+            availableForSale: variant.available,
+            selectedOptions: [
+              ...(variant.color ? [{ name: "Color", value: variant.color }] : []),
+              ...(variant.size ? [{ name: "Size", value: variant.size }] : []),
+            ],
+            price: {
+              amount: String(variant.price),
+              currencyCode: product.currency || "GBP",
+            },
+            stock: variant.stock,
+            urgencyText: variant.urgencyText,
+          },
+        })),
+      },
+      _voizn: product,
+    };
+  }
+
   function getBasketItems() {
     return JSON.parse(localStorage.getItem(BASKET_STORAGE_KEY) || "[]");
   }
@@ -63,6 +140,29 @@
 
   function getCurrencySymbol(currencyCode) {
     return currencyCode === "GBP" ? "£" : `${currencyCode} `;
+  }
+
+  function isShopifyVariantGid(value) {
+    return (
+      typeof value === "string" &&
+      value.startsWith("gid://shopify/ProductVariant/")
+    );
+  }
+
+  function resolveShopifyVariantGid(variant) {
+    if (!variant) {
+      return "";
+    }
+
+    if (isShopifyVariantGid(variant.shopifyVariantGid)) {
+      return variant.shopifyVariantGid;
+    }
+
+    if (isShopifyVariantGid(variant.id)) {
+      return variant.id;
+    }
+
+    return "";
   }
 
   function readShopifyConfig() {
@@ -578,6 +678,9 @@
   function mapVariantsForBasket(variants) {
     return (variants || []).map((variant) => ({
       id: variant.id,
+      shopifyVariantGid: resolveShopifyVariantGid(variant),
+      stock: Number(variant.stock ?? 0),
+      availableForSale: variant.availableForSale !== false,
       price: Number(variant.price?.amount || 0),
       currencyCode: variant.price?.currencyCode || "GBP",
       selectedOptions: (variant.selectedOptions || []).map((selectedOption) => ({
@@ -612,6 +715,37 @@
     );
   }
 
+  function getPreferredCheckoutVariant(variants) {
+    return (
+      (variants || []).find(
+        (variant) =>
+          resolveShopifyVariantGid(variant) &&
+          variant.availableForSale !== false &&
+          Number(variant.stock ?? 1) > 0,
+      ) ||
+      (variants || []).find((variant) => resolveShopifyVariantGid(variant)) ||
+      (variants || []).find((variant) => variant.availableForSale !== false) ||
+      variants?.[0] ||
+      null
+    );
+  }
+
+  function applyVariantSelection(selectors, variant) {
+    if (!variant || !Array.isArray(selectors) || selectors.length === 0) {
+      return;
+    }
+
+    selectors.forEach(({ name, select }) => {
+      const matchedOption = (variant.selectedOptions || []).find(
+        (selectedOption) => selectedOption.name === name,
+      );
+
+      if (matchedOption && select) {
+        select.value = matchedOption.value;
+      }
+    });
+  }
+
   function buildProductSnapshot(card) {
     const art = card.querySelector(".product-art");
     const title = card.querySelector("h3")?.textContent?.trim() || "";
@@ -621,7 +755,7 @@
       id: slugify(title),
       title,
       handle: binding.handle || card.dataset.shopifyHandle || "",
-      variantId: binding.variantId || card.dataset.variantId || "",
+      shopifyVariantGid: binding.variantId || card.dataset.variantId || "",
       tag: card.querySelector(".product-tag")?.textContent?.trim() || "",
       description: card.querySelector(".product-meta p")?.textContent?.trim() || "",
       price: card.querySelector(".product-meta span")?.textContent?.trim() || "",
@@ -839,19 +973,32 @@
     const items = getBasketItems();
     const existingItem = items.find(
       (basketItem) =>
-        basketItem.variantId === item.variantId &&
+        basketItem.localVariantId === item.localVariantId &&
+        basketItem.shopifyVariantGid === item.shopifyVariantGid &&
         JSON.stringify(basketItem.selectedOptions || []) ===
           JSON.stringify(item.selectedOptions || []),
     );
 
     if (existingItem) {
-      existingItem.quantity += item.quantity;
+      const maxQuantity = Number(existingItem.stock ?? item.stock ?? 0);
+      existingItem.quantity = maxQuantity > 0
+        ? Math.min(existingItem.quantity + item.quantity, maxQuantity)
+        : existingItem.quantity + item.quantity;
     } else {
       items.push(item);
     }
 
     setBasketItems(items);
     return items;
+  }
+
+  function notify(message, type = "info") {
+    if (typeof window.showToast === "function") {
+      window.showToast(message, type);
+      return;
+    }
+
+    window.alert(message);
   }
 
   function updateBasketItem(itemIndex, updates) {
@@ -891,8 +1038,21 @@
       );
     }
 
+    const invalidItems = basketItems.filter(
+      (item) =>
+        !item.shopifyVariantGid ||
+        !String(item.shopifyVariantGid).startsWith("gid://shopify/ProductVariant/"),
+    );
+
+    if (invalidItems.length > 0) {
+      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+        console.error("Invalid Shopify checkout lines", invalidItems);
+      }
+      throw new Error("This product is not available for checkout yet.");
+    }
+
     const lines = basketItems.map((item) => ({
-      merchandiseId: item.variantId,
+      merchandiseId: item.shopifyVariantGid,
       quantity: Number(item.quantity || 1),
     }));
 
@@ -941,14 +1101,27 @@
     elements.subtitle.textContent = product?.description || snapshot.description || "Product details";
 
     const optionSelectors = renderOptions(product);
+    const modalPreferredVariant = getPreferredCheckoutVariant(
+      (product?.variants?.edges || []).map(({ node }) => node),
+    );
+    applyVariantSelection(optionSelectors, modalPreferredVariant);
 
-    const resolveVariantId = () => {
+    const resolveVariant = () => {
       if (!product?.variants?.edges?.length) {
-        return snapshot.variantId;
+        return {
+          localVariantId: "",
+          shopifyVariantGid: snapshot.shopifyVariantGid,
+          availableForSale: Boolean(snapshot.shopifyVariantGid),
+        };
       }
 
       if (optionSelectors.length === 0) {
-        return product.variants.edges[0].node.id;
+        const firstVariant = product.variants.edges[0].node;
+        return {
+          localVariantId: firstVariant.id,
+          shopifyVariantGid: resolveShopifyVariantGid(firstVariant),
+          availableForSale: firstVariant.availableForSale !== false,
+        };
       }
 
       const matchedVariant = product.variants.edges.find(({ node }) =>
@@ -961,18 +1134,28 @@
         ),
       );
 
-      return matchedVariant?.node?.id || snapshot.variantId;
+      const resolved = matchedVariant?.node || null;
+      return {
+        localVariantId: resolved?.id || "",
+        shopifyVariantGid: resolveShopifyVariantGid(resolved) || snapshot.shopifyVariantGid,
+        availableForSale: resolved?.availableForSale !== false,
+      };
     };
 
     elements.addButton.onclick = async () => {
       try {
-        await addToCart(resolveVariantId(), 1);
+        const selectedVariant = resolveVariant();
+        if (!selectedVariant.shopifyVariantGid) {
+          throw new Error("This product is not available for checkout yet.");
+        }
+        await addToCart(selectedVariant.shopifyVariantGid, 1);
+        notify("Added to bag", "success");
         elements.addButton.textContent = "Added To Bag";
         window.setTimeout(() => {
           elements.addButton.textContent = "Add To Bag";
         }, 1200);
       } catch (error) {
-        alert(error.message);
+        notify(error.message, "error");
       }
     };
 
@@ -1045,6 +1228,10 @@
     const formattedPrice = livePrice
       ? `${liveCurrency === "GBP" ? "£" : `${liveCurrency} `}${livePrice}`
       : snapshot.price;
+    const voiznProduct = product?._voizn || null;
+    const note = shell.querySelector(".product-page-note");
+    const actions = shell.querySelector(".product-page-actions");
+    let notifyButton = shell.querySelector(".product-page-notify");
 
     title.textContent = snapshot.title;
     subtitle.textContent = product?.description || snapshot.description || "";
@@ -1103,13 +1290,22 @@
 
     options.innerHTML = "";
     const optionSelectors = renderProductPageOptions(product, options);
-    const resolveVariantId = () => {
+    const preferredVariant = getPreferredCheckoutVariant(variants);
+    applyVariantSelection(optionSelectors, preferredVariant);
+    const resolveVariant = () => {
       if (variants.length === 0) {
-        return snapshot.variantId;
+        return {
+          localVariantId: "",
+          shopifyVariantGid: snapshot.shopifyVariantGid,
+        };
       }
 
       if (optionSelectors.length === 0) {
-        return variants[0].id;
+        const firstVariant = variants[0];
+        return {
+          localVariantId: firstVariant.id,
+          shopifyVariantGid: resolveShopifyVariantGid(firstVariant),
+        };
       }
 
       const matchedVariant = variants.find((variant) =>
@@ -1122,7 +1318,10 @@
         ),
       );
 
-      return matchedVariant?.id || snapshot.variantId;
+      return {
+        localVariantId: matchedVariant?.id || "",
+        shopifyVariantGid: resolveShopifyVariantGid(matchedVariant) || snapshot.shopifyVariantGid,
+      };
     };
 
     addButton.onclick = async () => {
@@ -1134,14 +1333,30 @@
         })),
         availableOptions,
       );
-      const selectedVariantId = resolveVariantId();
+      const selectedVariantIds = resolveVariant();
       const selectedVariant =
-        variants.find((variant) => variant.id === selectedVariantId) || variants[0];
+        variants.find((variant) => variant.id === selectedVariantIds.localVariantId) || variants[0];
+      if (selectedVariant && selectedVariant.availableForSale === false) {
+        addButton.textContent = "Out Of Stock";
+        return;
+      }
+      if (!selectedVariantIds.shopifyVariantGid) {
+        notify("This product is not available for checkout yet.", "error");
+        return;
+      }
       const basketItem = {
-        id: `${snapshot.id}-${selectedVariantId}`,
+        id: `${snapshot.id}-${selectedVariantIds.localVariantId || selectedVariantIds.shopifyVariantGid}`,
+        productId: voiznProduct?.id || snapshot.id,
+        productSlug: snapshot.handle,
         title: snapshot.title,
         handle: snapshot.handle,
-        variantId: selectedVariantId,
+        localVariantId: selectedVariantIds.localVariantId || null,
+        shopifyVariantGid: selectedVariantIds.shopifyVariantGid,
+        selectedSize:
+          selectedOptions.find((option) => option.name.toLowerCase() === "size")?.value || null,
+        selectedColor:
+          selectedOptions.find((option) => option.name.toLowerCase() === "color")?.value || null,
+        stock: Number(selectedVariant?.stock ?? 0),
         quantity: 1,
         price: Number(selectedVariant?.price?.amount || livePrice || 0),
         currencyCode: selectedVariant?.price?.currencyCode || liveCurrency || "GBP",
@@ -1155,6 +1370,14 @@
       };
 
       addItemToBasket(basketItem);
+      notify("Added to bag", "success");
+      if (window.trackAnalyticsEvent) {
+        window.trackAnalyticsEvent("ADD_TO_BASKET", snapshot.handle || snapshot.id, {
+          source: "product-page",
+          variantId: selectedVariantIds.localVariantId || null,
+          shopifyVariantGid: selectedVariantIds.shopifyVariantGid,
+        });
+      }
       addButton.textContent = "Added To Bag";
       window.setTimeout(() => {
         addButton.textContent = "Add To Bag";
@@ -1173,6 +1396,68 @@
     };
     updateFavoriteButton();
 
+    if (voiznProduct) {
+      const availableVariants = variants.filter((variant) => variant.availableForSale);
+      addButton.disabled = voiznProduct.locked || availableVariants.length === 0;
+      addButton.textContent = voiznProduct.locked
+        ? "Locked Until Release"
+        : availableVariants.length === 0
+          ? "Out Of Stock"
+          : "Add To Bag";
+
+      if (!notifyButton) {
+        notifyButton = document.createElement("button");
+        notifyButton.type = "button";
+        notifyButton.className = "entry-secondary-button product-page-notify";
+        actions?.appendChild(notifyButton);
+      }
+
+      const firstAvailableVariant = availableVariants[0] || variants[0] || null;
+      notifyButton.hidden = availableVariants.length > 0;
+      notifyButton.textContent = "Notify Me When Available";
+      notifyButton.onclick = async () => {
+        const email =
+          window.prompt("Enter your email for a back-in-stock alert:", "") || "";
+        if (!email.trim()) {
+          return;
+        }
+        try {
+          await backendRequest("/api/catalog/back-in-stock", {
+            method: "POST",
+            body: JSON.stringify({
+              email: email.trim().toLowerCase(),
+              productSlug: voiznProduct.slug,
+              variantId: firstAvailableVariant?.id || null,
+            }),
+          });
+          notify("You’re on the notify list", "success");
+          notifyButton.textContent = "You’re On The List";
+        } catch (error) {
+          notify(error.message, "error");
+        }
+      };
+
+      if (note) {
+        if (voiznProduct.locked && voiznProduct.drop) {
+          note.textContent = `${voiznProduct.drop.title} unlocks on ${new Date(
+            voiznProduct.drop.releaseDate,
+          ).toLocaleString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}.`;
+        } else if (voiznProduct.urgencyText) {
+          note.textContent = voiznProduct.lowStock
+            ? `${voiznProduct.urgencyText} · Low stock`
+            : voiznProduct.urgencyText;
+        } else if (voiznProduct.privateAccessOnly) {
+          note.textContent =
+            "This product is reserved for approved private access members.";
+        }
+      }
+    }
+
     detailTrigger.onclick = () => {
       detailPopover.hidden = false;
     };
@@ -1180,6 +1465,28 @@
     detailClose?.addEventListener("click", () => {
       detailPopover.hidden = true;
     });
+
+    let storySection = document.querySelector(".product-story-section");
+    if (!storySection) {
+      storySection = document.createElement("section");
+      storySection.className = "product-story-section reveal";
+      shell.insertAdjacentElement("afterend", storySection);
+    }
+
+    storySection.innerHTML = `
+      <div class="product-story-media ${snapshot.artClass || ""}" data-parallax="0.08"></div>
+      <div class="product-story-copy">
+        <p class="eyebrow">Concept / Story</p>
+        <h2 data-text-reveal>${snapshot.title}</h2>
+        <p>${snapshot.detailBody || product?.description || "Built as part of the VOIZN monochrome system with cleaner proportion, weight, and texture."}</p>
+        <div class="product-story-notes">
+          ${(snapshot.details || [])
+            .slice(0, 3)
+            .map((detail) => `<span>${detail}</span>`)
+            .join("")}
+        </div>
+      </div>
+    `;
   }
 
   function renderProductPageOptions(product, mountPoint) {
@@ -1233,7 +1540,7 @@
       id: slugify(title),
       title,
       handle,
-      variantId: shell.dataset.variantId || "",
+      shopifyVariantGid: shell.dataset.variantId || "",
       tag: shell.dataset.productTag || "",
       description: shell.dataset.productDescription || "",
       price: shell.dataset.productPrice || "",
@@ -1248,9 +1555,17 @@
 
     let product = null;
     try {
-      product = await fetchProductByHandle(handle);
+      const backendPayload = await backendRequest(`/api/catalog/products/${handle}`, {
+        method: "GET",
+      });
+      product = convertBackendProductToProductPageShape(backendPayload.product);
     } catch (error) {
-      console.warn("Product page Shopify fetch failed:", error.message);
+      console.warn("Product page catalog fetch failed:", error.message);
+      try {
+        product = await fetchProductByHandle(handle);
+      } catch (shopifyError) {
+        console.warn("Product page Shopify fetch failed:", shopifyError.message);
+      }
     }
 
     renderProductPage(product, snapshot);
@@ -1271,18 +1586,25 @@
     try {
       addItemToBasket({
         id: `${slugify(button.dataset.productTitle || variantId)}-${variantId}`,
+        productId: button.dataset.productId || slugify(button.dataset.productTitle || ""),
+        productSlug: button.dataset.handle || "",
         title: button.dataset.productTitle || "Product",
         handle: button.dataset.handle || "",
-        variantId,
+        localVariantId: button.dataset.localVariantId || null,
+        shopifyVariantGid: variantId,
         quantity,
         price: Number(button.dataset.price || 0),
         currencyCode: button.dataset.currencyCode || "GBP",
+        selectedSize: button.dataset.selectedSize || null,
+        selectedColor: button.dataset.selectedColor || null,
+        stock: Number(button.dataset.stock || 0),
         selectedOptions: [],
         image: button.dataset.image || "",
         imageAlt: button.dataset.imageAlt || "",
         artClass: button.dataset.artClass || "",
         tag: button.dataset.tag || "",
       });
+      notify("Added to bag", "success");
       button.textContent = "Added";
     } catch (error) {
       console.error(error);
@@ -1358,6 +1680,7 @@
         item.selectedOptions,
         item.availableOptions,
       );
+      const maxQuantity = Math.max(1, Number(item.stock || 1));
 
       const optionMarkup =
         item.availableOptions && item.availableOptions.length > 0
@@ -1412,7 +1735,7 @@
             <label class="basket-select-wrap">
               <span>Quantity</span>
               <select data-basket-quantity="${index}">
-                ${Array.from({ length: 10 }, (_, qtyIndex) => {
+                ${Array.from({ length: maxQuantity }, (_, qtyIndex) => {
                   const qty = qtyIndex + 1;
                   return `<option value="${qty}" ${
                     qty === Number(item.quantity) ? "selected" : ""
@@ -1470,9 +1793,18 @@
         const matchedVariant = findMatchingVariant(item.variants, nextSelectedOptions);
         updateBasketItem(itemIndex, {
           selectedOptions: nextSelectedOptions,
-          variantId: matchedVariant?.id || item.variantId,
+          localVariantId: matchedVariant?.id || item.localVariantId,
+          shopifyVariantGid:
+            resolveShopifyVariantGid(matchedVariant) || item.shopifyVariantGid,
           price: matchedVariant?.price || item.price,
           currencyCode: matchedVariant?.currencyCode || item.currencyCode,
+          stock: Number(matchedVariant?.stock ?? item.stock ?? 0),
+          selectedSize:
+            nextSelectedOptions.find((option) => option.name.toLowerCase() === "size")?.value ||
+            item.selectedSize,
+          selectedColor:
+            nextSelectedOptions.find((option) => option.name.toLowerCase() === "color")?.value ||
+            item.selectedColor,
         });
         renderBasketPage();
       });
@@ -1492,7 +1824,7 @@
         basketCheckout.textContent = "Opening Checkout...";
         await goToShopifyCheckoutFromBasket();
       } catch (error) {
-        alert(error.message);
+        notify(error.message, "error");
         basketCheckout.disabled = false;
         basketCheckout.textContent = "Continue To Checkout";
       }
@@ -1506,7 +1838,7 @@
         try {
           await handleAddToCartClick(button);
         } catch (error) {
-          alert(error.message);
+          notify(error.message, "error");
         }
       });
     });
@@ -1516,7 +1848,7 @@
         try {
           await handleBuyNowClick(button);
         } catch (error) {
-          alert(error.message);
+          notify(error.message, "error");
         }
       });
     });
@@ -1526,7 +1858,7 @@
         try {
           await redirectToCheckout();
         } catch (error) {
-          alert(error.message);
+          notify(error.message, "error");
         }
       });
     });
@@ -1559,6 +1891,7 @@
     fetchProductByHandle,
     createCart,
     addToCart,
+    addItemToLocalBasket: addItemToBasket,
     getCart,
     redirectToCheckout,
     bindShopifyButtons,

@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "db:generate": "npx prisma generate",
-    "db:push": "npx prisma db push"
+    "db:push": "npx prisma db push",
+    "cleanup:duplicate-users": "node scripts/cleanup-duplicate-users.mjs"
   },
   "keywords": [],
   "author": "",

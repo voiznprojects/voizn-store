@@ -11,7 +11,7 @@
             href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Oswald:wght@400;500;700&display=swap"
             rel="stylesheet"
         />
-        <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="assets/css/style.css" />
     </head>
     <body data-protected="true">
         <div class="topbar">
@@ -84,13 +84,34 @@
         </header>
 
         <main>
-            <section class="page-hero compact-hero reveal">
-                <p class="hero-kicker">Drop 01 / Live Now</p>
-                <h1>THE LATEST DROP.</h1>
-                <p class="hero-description">A tighter edit of fleece, washed tees, and structured outerwear.</p>
+            <section class="drop-cinematic-hero reveal">
+                <div class="drop-cinematic-media" data-parallax="0.08"></div>
+                <div class="cinematic-hero-grain"></div>
+                <div class="drop-cinematic-copy">
+                    <p class="hero-kicker">Drop 01 / Private Access</p>
+                    <h1 class="cinematic-title" data-text-reveal>The latest drop arrives in silence.</h1>
+                    <p class="hero-description">A tighter edit of fleece, washed tees, and structured outerwear with a more editorial pace.</p>
+                </div>
+                <div class="drop-hero-side">
+                    <div class="drop-countdown-shell">
+                        <span>Release window</span>
+                        <strong id="drop-countdown">Loading drop timer</strong>
+                    </div>
+                    <button class="tile-link hero-secondary-link" type="button" data-drop-notify="summer-static">Notify Me</button>
+                </div>
             </section>
 
-            <section class="product-grid page-grid">
+            <section class="drop-intro-panel reveal">
+                <div class="drop-intro-meta">
+                    <p class="eyebrow">Drop Story</p>
+                    <p class="drop-intro-copy">Before release, product states stay softened and locked. Once the drop opens, the shelf sharpens into full access with a clean, single-motion unlock.</p>
+                </div>
+                <div class="drop-intro-lead">
+                    <h2>Private access opens first. The public reveal follows only when the system goes live.</h2>
+                </div>
+            </section>
+
+            <section class="product-grid page-grid drop-grid">
                 <article class="product-card reveal">
                     <div class="product-art art-hoodie"></div>
                     <div class="product-meta">
@@ -201,8 +222,9 @@
             </div>
         </footer>
 
-        <script src="script.js"></script>
-        <script src="shopify-config.js?v=2"></script>
-        <script src="shopify.js?v=2"></script>
+        <script src="assets/js/script.js"></script>
+        <script src="assets/js/shopify-config.js?v=2"></script>
+        <script src="assets/js/shopify.js?v=2"></script>
     </body>
 </html>
+

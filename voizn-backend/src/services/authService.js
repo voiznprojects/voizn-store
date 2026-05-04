@@ -11,22 +11,27 @@ import { compareValue, createNumericCode, hashValue } from "../utils/security.js
 import { sanitizeUser } from "./userService.js";
 
 const SIGNUP_CODE_TTL_MS = 10 * 60 * 1000;
-const PASSWORD_RESET_CODE_TTL_MS = 10 * 60 * 1000;
+
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
 
 export async function startSignup({ name, email, country }) {
-  const normalizedEmail = String(email).trim().toLowerCase();
-
-  const user = await prisma.user.upsert({
+  const normalizedEmail = normalizeEmail(email);
+  const existingUser = await prisma.user.findUnique({
     where: { email: normalizedEmail },
-    update: {
-      name,
-      country: country || null,
-      accessStatus: AccessStatus.PENDING_VERIFICATION,
-      loginMethod: LoginMethod.EMAIL,
-      isEmailVerified: false,
-      passwordHash: null,
-    },
-    create: {
+    select: { id: true },
+  });
+
+  if (existingUser) {
+    const error = new Error("An account with this email already exists.");
+    error.statusCode = 409;
+    error.code = "email_exists";
+    throw error;
+  }
+
+  const user = await prisma.user.create({
+    data: {
       name,
       email: normalizedEmail,
       country: country || null,
@@ -65,8 +70,50 @@ export async function startSignup({ name, email, country }) {
   };
 }
 
+export async function resendSignupCode({ email }) {
+  const normalizedEmail = normalizeEmail(email);
+  const user = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+  });
+
+  if (!user || user.isEmailVerified || user.accessStatus !== AccessStatus.PENDING_VERIFICATION) {
+    const error = new Error("A verification code cannot be resent for this account.");
+    error.statusCode = 400;
+    error.code = "cannot_resend_code";
+    throw error;
+  }
+
+  await prisma.verificationCode.updateMany({
+    where: {
+      userId: user.id,
+      purpose: VerificationPurpose.SIGNUP,
+      consumedAt: null,
+    },
+    data: {
+      consumedAt: new Date(),
+    },
+  });
+
+  const code = createNumericCode();
+  await prisma.verificationCode.create({
+    data: {
+      userId: user.id,
+      codeHash: await hashValue(code),
+      purpose: VerificationPurpose.SIGNUP,
+      expiresAt: new Date(Date.now() + SIGNUP_CODE_TTL_MS),
+    },
+  });
+
+  await sendVerificationEmail(normalizedEmail, code);
+
+  return {
+    ok: true,
+    message: "A fresh verification code has been sent.",
+  };
+}
+
 export async function verifySignupCode({ email, code }) {
-  const normalizedEmail = String(email).trim().toLowerCase();
+  const normalizedEmail = normalizeEmail(email);
   const user = await prisma.user.findUnique({
     where: { email: normalizedEmail },
     include: {
@@ -175,7 +222,7 @@ export async function setPasswordAfterVerification({ setupToken, password }) {
 }
 
 export async function loginWithEmailPassword({ email, password }) {
-  const normalizedEmail = String(email).trim().toLowerCase();
+  const normalizedEmail = normalizeEmail(email);
   const user = await prisma.user.findUnique({
     where: { email: normalizedEmail },
   });
@@ -221,7 +268,7 @@ export async function loginWithEmailPassword({ email, password }) {
 }
 
 export async function startPasswordReset({ email }) {
-  const normalizedEmail = String(email).trim().toLowerCase();
+  const normalizedEmail = normalizeEmail(email);
   const user = await prisma.user.findUnique({
     where: { email: normalizedEmail },
   });
@@ -244,59 +291,6 @@ export async function startPasswordReset({ email }) {
   return {
     ok: true,
     message: "If that email exists, a reset link has been sent.",
-  };
-}
-
-export async function verifyPasswordResetCode({ email, code }) {
-  const normalizedEmail = String(email).trim().toLowerCase();
-  const user = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
-    include: {
-      verificationCodes: {
-        where: {
-          purpose: VerificationPurpose.PASSWORD_RESET,
-          consumedAt: null,
-        },
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
-    },
-  });
-
-  const verificationCode = user?.verificationCodes?.[0];
-  if (!user || !verificationCode) {
-    const error = new Error("Reset code could not be found.");
-    error.statusCode = 400;
-    error.code = "invalid_code";
-    throw error;
-  }
-
-  if (verificationCode.expiresAt.getTime() < Date.now()) {
-    const error = new Error("Reset code has expired.");
-    error.statusCode = 400;
-    error.code = "expired_code";
-    throw error;
-  }
-
-  const isValid = await compareValue(String(code).trim(), verificationCode.codeHash);
-  if (!isValid) {
-    const error = new Error("Reset code is incorrect.");
-    error.statusCode = 400;
-    error.code = "invalid_code";
-    throw error;
-  }
-
-  await prisma.verificationCode.update({
-    where: { id: verificationCode.id },
-    data: { consumedAt: new Date() },
-  });
-
-  return {
-    ok: true,
-    resetToken: signPurposeToken(
-      { sub: user.id, purpose: "password-reset" },
-      "20m",
-    ),
   };
 }
 

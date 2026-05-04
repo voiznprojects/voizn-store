@@ -1,5 +1,4 @@
 const THEME_STORAGE_KEY = "voizn-theme";
-const EARLY_ACCESS_STORAGE_KEY = "voizn-early-access";
 const API_CONFIG = window.VOIZN_CONFIG || {};
 const API_BASE_URL =
   API_CONFIG.apiBaseUrl ||
@@ -17,15 +16,30 @@ const state = {
   currentUser: null,
   favorites: [],
   favoritesMap: new Map(),
+  catalogProducts: [],
+  catalogMap: new Map(),
+  drops: [],
+  toastTimeouts: new Set(),
+  analyticsSessionId:
+    sessionStorage.getItem("voizn-analytics-session") ||
+    `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
 };
-const EARLY_ACCESS_USERS = {
-  voiznadmin: "39b5dac3622a493e66b0bfe0a00247a1bdacdd1233c080f6b57e8837b150106c",
-  "contact@voizn.store":
-    "2310c3503b250b426fdd8a452e9f9f3c29dda977fe331c2df26d125c98b679a9",
-  srinithi7: "5262512637c208440ce7479b52014f3f556fcbc35b915ecbe9aea89a0d1f6b05",
-  guest1: "1afc14e1e0676836a23b602b0b8c1609da95e234c147e7b7d36b562a0a79c3cb",
-  sakana7: "5262512637c208440ce7479b52014f3f556fcbc35b915ecbe9aea89a0d1f6b05",
-};
+sessionStorage.setItem("voizn-analytics-session", state.analyticsSessionId);
+function updateLightThemeDepth() {
+  if (document.body.dataset.theme !== "light") {
+    document.documentElement.style.removeProperty("--light-scroll-depth");
+    return;
+  }
+
+  const maxScrollable =
+    document.documentElement.scrollHeight - window.innerHeight;
+  const progress =
+    maxScrollable > 0 ? Math.min(window.scrollY / maxScrollable, 1) : 0;
+  document.documentElement.style.setProperty(
+    "--light-scroll-depth",
+    progress.toFixed(3),
+  );
+}
 
 const slugify = (value) =>
   String(value || "")
@@ -35,16 +49,6 @@ const slugify = (value) =>
     .replace(/^-+|-+$/g, "");
 
 const getSavedTheme = () => localStorage.getItem(THEME_STORAGE_KEY) || "dark";
-const hasEarlyAccessEntry = () =>
-  sessionStorage.getItem(EARLY_ACCESS_STORAGE_KEY) === "granted";
-
-async function hashPassword(value) {
-  const bytes = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 const formatCurrency = (value, currency = "GBP") => {
   const amount = Number.parseFloat(value);
@@ -76,6 +80,12 @@ const formatDate = (value) => {
   }).format(parsed);
 };
 
+const toTitleCase = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+
 const applyTheme = (theme) => {
   document.body.dataset.theme = theme;
   themeToggleButtons.forEach((button) => {
@@ -91,6 +101,7 @@ const applyTheme = (theme) => {
     );
     button.setAttribute("aria-pressed", String(isLight));
   });
+  updateLightThemeDepth();
 };
 
 applyTheme(getSavedTheme());
@@ -160,6 +171,103 @@ function setButtonLoading(button, isLoading, loadingText = "Please wait") {
   button.textContent = isLoading ? loadingText : button.dataset.defaultText;
 }
 
+function ensureToastRegion() {
+  let region = document.querySelector(".toast-region");
+  if (!region) {
+    region = document.createElement("div");
+    region.className = "toast-region";
+    region.setAttribute("aria-live", "polite");
+    region.setAttribute("aria-atomic", "true");
+    document.body.appendChild(region);
+  }
+
+  return region;
+}
+
+function showToast(message, type = "info") {
+  if (!message) {
+    return;
+  }
+
+  const region = ensureToastRegion();
+  const toast = document.createElement("div");
+  toast.className = "site-toast";
+  toast.dataset.state = type;
+  toast.textContent = message;
+  region.appendChild(toast);
+
+  requestAnimationFrame(() => {
+    toast.classList.add("is-visible");
+  });
+
+  const timeoutId = window.setTimeout(() => {
+    toast.classList.remove("is-visible");
+    window.setTimeout(() => toast.remove(), 260);
+    state.toastTimeouts.delete(timeoutId);
+  }, 2800);
+
+  state.toastTimeouts.add(timeoutId);
+}
+
+function setupPageTransitions() {
+  let overlay = document.querySelector(".page-transition");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.className = "page-transition";
+    document.body.appendChild(overlay);
+  }
+
+  requestAnimationFrame(() => {
+    document.body.classList.add("page-ready");
+  });
+
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest("a[href]");
+    if (!link) {
+      return;
+    }
+
+    const href = link.getAttribute("href") || "";
+    if (
+      link.target === "_blank" ||
+      href.startsWith("#") ||
+      href.startsWith("mailto:") ||
+      href.startsWith("tel:") ||
+      href.startsWith("http")
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    document.body.classList.remove("page-ready");
+    document.body.classList.add("page-leaving");
+    window.setTimeout(() => {
+      window.location.href = href;
+    }, 240);
+  });
+}
+
+function showLoadingState(selector, count = 3) {
+  const mount = document.querySelector(selector);
+  if (!mount) {
+    return;
+  }
+
+  mount.innerHTML = Array.from(
+    { length: count },
+    () => `
+      <article class="skeleton-card">
+        <div class="skeleton-block skeleton-media"></div>
+        <div class="skeleton-copy">
+          <div class="skeleton-block skeleton-line short"></div>
+          <div class="skeleton-block skeleton-line"></div>
+          <div class="skeleton-block skeleton-line tiny"></div>
+        </div>
+      </article>
+    `,
+  ).join("");
+}
+
 function requireSelector(selector) {
   return document.querySelector(selector);
 }
@@ -179,6 +287,110 @@ function createFavoriteMap(items) {
       },
     ]),
   );
+}
+
+async function loadCatalogState() {
+  try {
+    const [productsPayload, dropsPayload] = await Promise.all([
+      apiFetch("/api/catalog/products", { method: "GET" }),
+      apiFetch("/api/catalog/drops", { method: "GET" }),
+    ]);
+    state.catalogProducts = productsPayload.products || [];
+    state.catalogMap = new Map(
+      state.catalogProducts.map((product) => [slugify(product.name), product]),
+    );
+    state.drops = dropsPayload.drops || [];
+  } catch (error) {
+    console.warn("VOIZN catalog bootstrap failed:", error.message);
+    state.catalogProducts = [];
+    state.catalogMap = new Map();
+    state.drops = [];
+  }
+}
+
+function getCatalogProductByName(name) {
+  return state.catalogMap.get(slugify(name)) || null;
+}
+
+function detectBrowser() {
+  const userAgent = navigator.userAgent || "";
+  if (/Edg\//i.test(userAgent)) return "Edge";
+  if (/Chrome\//i.test(userAgent) && !/Edg\//i.test(userAgent)) return "Chrome";
+  if (/Safari\//i.test(userAgent) && !/Chrome\//i.test(userAgent)) return "Safari";
+  if (/Firefox\//i.test(userAgent)) return "Firefox";
+  if (/OPR\//i.test(userAgent) || /Opera/i.test(userAgent)) return "Opera";
+  return "Browser";
+}
+
+function detectDevice() {
+  const source = `${navigator.userAgent || ""} ${navigator.platform || ""}`.toLowerCase();
+  if (/iphone|android|mobile/.test(source)) return "Mobile";
+  if (/ipad|tablet/.test(source)) return "Tablet";
+  return "Desktop";
+}
+
+function deriveCurrentProductSlug() {
+  const currentFile = window.location.pathname.split("/").pop() || "";
+  const bare = currentFile.replace(/\.html$/i, "");
+  if (state.catalogProducts.some((product) => product.slug === bare)) {
+    return bare;
+  }
+  return null;
+}
+
+async function trackAnalyticsEvent(eventType, productSlug = null, metadata = null) {
+  try {
+    await apiFetch("/api/analytics/event", {
+      method: "POST",
+      body: JSON.stringify({
+        eventType,
+        sessionId: state.analyticsSessionId,
+        productSlug: productSlug || deriveCurrentProductSlug(),
+        path: `${window.location.pathname}${window.location.search}`,
+        metadata: {
+          browser: detectBrowser(),
+          device: detectDevice(),
+          platform: navigator.platform || null,
+          userAgent: navigator.userAgent || null,
+          language: navigator.language || null,
+          timezone:
+            Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || null,
+          ...(metadata || {}),
+        },
+      }),
+    });
+  } catch (error) {
+    console.warn("VOIZN analytics skipped:", error.message);
+  }
+}
+
+function buildAccessCopy(accessStatus) {
+  const status = String(accessStatus || "").toUpperCase();
+  if (status === "PENDING_VERIFICATION") {
+    return {
+      title: "Pending verification",
+      description:
+        "Check your inbox and complete email verification to continue into the private VOIZN experience.",
+    };
+  }
+  if (status === "PENDING_APPROVAL") {
+    return {
+      title: "We’re reviewing your access request",
+      description:
+        "Your account is verified and waiting for manual VOIZN approval. You’ll receive an email once approved.",
+    };
+  }
+  if (status === "REJECTED") {
+    return {
+      title: "Access rejected",
+      description:
+        "This request does not currently have private website access. Contact VOIZN support if you believe this is a mistake.",
+    };
+  }
+  return {
+    title: "Access granted",
+    description: "Your account is approved and ready to move through the full private VOIZN site.",
+  };
 }
 
 async function bootstrapAuth() {
@@ -213,10 +425,13 @@ function setupThemeToggle() {
       applyTheme(nextTheme);
     });
   });
+
+  window.addEventListener("scroll", updateLightThemeDepth, { passive: true });
 }
 
 function setupRevealObserver() {
-  if (!revealItems.length) {
+  const items = document.querySelectorAll(".reveal, [data-text-reveal]");
+  if (!items.length) {
     return;
   }
 
@@ -234,7 +449,111 @@ function setupRevealObserver() {
     { threshold: 0.12 },
   );
 
-  revealItems.forEach((item) => observer.observe(item));
+  items.forEach((item, index) => {
+    item.style.setProperty("--reveal-delay", `${index * 55}ms`);
+    observer.observe(item);
+  });
+}
+
+function setupScrollCinema() {
+  if (window.matchMedia("(hover: none)").matches) {
+    document.documentElement.classList.add("touch");
+  }
+
+  const textRevealItems = document.querySelectorAll("[data-text-reveal]");
+  const parallaxItems = document.querySelectorAll("[data-parallax]");
+  const hero = document.querySelector(".cinematic-hero");
+  const heroContent = hero?.querySelector(".cinematic-hero-content");
+
+  textRevealItems.forEach((element) => {
+    if (element.dataset.revealReady === "true") {
+      return;
+    }
+
+    element.dataset.revealReady = "true";
+    const text = (element.textContent || "").trim();
+    element.textContent = "";
+    text.split(/\s+/).forEach((word, index, words) => {
+      const span = document.createElement("span");
+      span.textContent = word;
+      span.style.transitionDelay = `${index * 42}ms`;
+      element.appendChild(span);
+      if (index < words.length - 1) {
+        element.appendChild(document.createTextNode(" "));
+      }
+    });
+  });
+
+  const update = () => {
+    const scrollY = window.scrollY;
+
+    if (hero && heroContent) {
+      const heroHeight = hero.offsetHeight || window.innerHeight;
+      const progress = Math.min(scrollY / heroHeight, 1);
+      hero.style.setProperty("--hero-progress", progress.toFixed(3));
+      heroContent.style.opacity = String(Math.max(0, 1 - progress * 1.35));
+      heroContent.style.transform = `translate3d(0, ${progress * 48}px, 0)`;
+    }
+
+    parallaxItems.forEach((item) => {
+      const speed = Number(item.dataset.parallax || 0.12);
+      const rect = item.getBoundingClientRect();
+      item.style.transform = `translate3d(0, ${rect.top * speed}px, 0) scale(1.02)`;
+    });
+  };
+
+  update();
+  window.addEventListener("scroll", update, { passive: true });
+  window.addEventListener("resize", update, { passive: true });
+}
+
+function setupDropExperience() {
+  const countdown = document.querySelector("#drop-countdown");
+  const notifyButton = document.querySelector("[data-drop-notify]");
+  const targetDrop = notifyButton?.dataset.dropNotify || "summer-static";
+  const activeDrop = state.drops.find((drop) => drop.slug === targetDrop);
+
+  if (countdown && activeDrop?.releaseDate) {
+    const tick = () => {
+      const distance = new Date(activeDrop.releaseDate).getTime() - Date.now();
+      if (distance <= 0) {
+        countdown.textContent = "Now live";
+        return;
+      }
+
+      const days = Math.floor(distance / 86400000);
+      const hours = Math.floor((distance % 86400000) / 3600000);
+      const minutes = Math.floor((distance % 3600000) / 60000);
+      const seconds = Math.floor((distance % 60000) / 1000);
+      countdown.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    };
+
+    tick();
+    window.setInterval(tick, 1000);
+  }
+
+  notifyButton?.addEventListener("click", async () => {
+    const email =
+      state.currentUser?.email ||
+      window.prompt("Enter your email for drop notifications:", "") ||
+      "";
+    if (!email.trim()) {
+      return;
+    }
+
+    try {
+      await apiFetch("/api/catalog/drop-notifications", {
+        method: "POST",
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          dropSlug: targetDrop,
+        }),
+      });
+      showToast("Drop notification saved", "success");
+    } catch (error) {
+      showToast(error.message, "error");
+    }
+  });
 }
 
 function setupMenu() {
@@ -332,8 +651,10 @@ function setupHeader() {
     favoritesLink.href = "favorites.html";
     favoritesLink.setAttribute("aria-label", "Favourites");
     favoritesLink.innerHTML =
-      '<span class="icon-heart" aria-hidden="true"></span><span>Favourites</span>';
+      '<span class="icon-heart" aria-hidden="true"></span>';
   }
+  favoritesLink.innerHTML =
+    '<span class="icon-heart" aria-hidden="true"></span>';
 
   headerLeft.innerHTML = "";
   if (searchBox) {
@@ -368,7 +689,7 @@ function setupHeader() {
       <a href="favorites.html">Favourites</a>
       ${
         state.currentUser.role === "ADMIN"
-          ? '<a href="admin-approvals.html">Access Approvals</a>'
+          ? '<a href="admin-approvals.html">Access Approvals</a><a href="admin-analytics.html">Analytics</a>'
           : ""
       }
       <button class="logout-button" type="button">Logout</button>
@@ -502,6 +823,8 @@ async function toggleFavorite(productMeta, button, card) {
       await apiFetch(`/api/favorites/${productMeta.productId}`, {
         method: "DELETE",
       });
+      trackAnalyticsEvent("FAVORITE", productMeta.productId, { action: "remove" });
+      showToast("Removed from favourites", "info");
       state.favoritesMap.delete(productMeta.productId);
       state.favorites = state.favorites.filter(
         (favorite) => favorite.productId !== productMeta.productId,
@@ -515,6 +838,8 @@ async function toggleFavorite(productMeta, button, card) {
         method: "PUT",
         body: JSON.stringify(productMeta),
       });
+      trackAnalyticsEvent("FAVORITE", productMeta.productId, { action: "add" });
+      showToast("Saved to favourites", "success");
       const normalized = {
         ...payload.favorite,
         productId: payload.favorite.productId,
@@ -523,7 +848,7 @@ async function toggleFavorite(productMeta, button, card) {
       state.favorites = [normalized, ...state.favorites.filter((favorite) => favorite.productId !== normalized.productId)];
     }
   } catch (error) {
-    window.alert(error.message);
+    showToast(error.message, "error");
   } finally {
     button.disabled = false;
     updateFavoriteButtons();
@@ -584,6 +909,75 @@ function setupFavorites() {
   updateFavoriteButtons();
 }
 
+function enhanceCatalogCards() {
+  document.querySelectorAll(".product-card").forEach((card) => {
+    const title = card.querySelector("h3")?.textContent?.trim();
+    const product = getCatalogProductByName(title);
+    if (!product) {
+      return;
+    }
+
+    card.dataset.productId = product.slug;
+    card.dataset.price = String(product.price);
+    const meta = card.querySelector(".product-meta");
+    const metaLead = meta?.querySelector("div");
+    const metaPrice = meta?.querySelector("span");
+    const metaDescription = metaLead?.querySelector("p:last-of-type");
+    const existingStatus = card.querySelector(".product-stock-status");
+    if (existingStatus) {
+      existingStatus.remove();
+    }
+    card.classList.remove(
+      "product-card-unavailable",
+      "product-card-low-stock",
+      "product-card-locked",
+    );
+
+    if (metaPrice) {
+      meta.appendChild(metaPrice);
+    }
+
+    const status = document.createElement("div");
+    status.className = "product-stock-status";
+    if (product.locked) {
+      status.textContent = `Locked until ${formatDate(product.releaseDate)}`;
+      status.dataset.state = "locked";
+      card.classList.add("product-card-locked");
+    } else if (!product.available) {
+      status.textContent = "Out of stock";
+      status.dataset.state = "out";
+      card.classList.add("product-card-unavailable");
+    } else if (product.urgencyText) {
+      status.textContent = product.lowStock ? `${product.urgencyText} · Low stock` : product.urgencyText;
+      status.dataset.state = product.lowStock ? "low" : "available";
+      if (product.lowStock) {
+        card.classList.add("product-card-low-stock");
+      }
+    } else if (product.privateAccessOnly) {
+      status.textContent = "Private access only";
+      status.dataset.state = "private";
+    } else {
+      status.textContent = "Available now";
+      status.dataset.state = "available";
+    }
+    if (metaDescription) {
+      metaDescription.insertAdjacentElement("afterend", status);
+    } else if (metaLead) {
+      metaLead.appendChild(status);
+    } else {
+      meta?.appendChild(status);
+    }
+
+    if (status.dataset.state === "private") {
+      status.remove();
+    }
+
+    card.addEventListener("mouseenter", () =>
+      trackAnalyticsEvent("PRODUCT_CLICK", product.slug, { source: "hover-card" }),
+    );
+  });
+}
+
 function renderFavoritesPage() {
   const favoritesGrid = requireSelector("#favorites-grid");
   const favoritesEmpty = requireSelector("#favorites-empty");
@@ -609,6 +1003,10 @@ function renderFavoritesPage() {
     const article = document.createElement("article");
     article.className = "product-card reveal is-visible";
     article.dataset.productId = item.productId;
+    const product =
+      state.catalogMap.get(item.productId) ||
+      getCatalogProductByName(item.name) ||
+      null;
     article.innerHTML = `
       <div class="product-art ${item.artClass || ""}"></div>
       <div class="product-meta">
@@ -619,11 +1017,80 @@ function renderFavoritesPage() {
         </div>
         <span>${item.price || ""}</span>
       </div>
+      <div class="favorite-card-actions">
+        <button class="tile-link move-to-basket-button" type="button">Move to basket</button>
+      </div>
     `;
     favoritesGrid.appendChild(article);
+    article
+      .querySelector(".move-to-basket-button")
+      ?.addEventListener("click", () => moveFavoriteToBasket(item, product));
   });
 
   setupFavorites();
+}
+
+function moveFavoriteToBasket(item, product) {
+  const resolvedProduct =
+    product ||
+    state.catalogMap.get(item.productId) ||
+    getCatalogProductByName(item.name) ||
+    null;
+  const variant =
+    resolvedProduct?.variants?.find((entry) => entry.available) ||
+    resolvedProduct?.variants?.[0] ||
+    null;
+  if (!variant) {
+    showToast("This product is currently unavailable.", "error");
+    return;
+  }
+
+  if (!window.ShopifyStorefront?.addItemToLocalBasket) {
+    showToast("Basket is not available right now.", "error");
+    return;
+  }
+
+  window.ShopifyStorefront.addItemToLocalBasket({
+    id: `${item.productId}-${variant.id}`,
+    title: item.name,
+    handle: resolvedProduct.slug,
+    variantId: variant.id,
+    quantity: 1,
+    price: Number(variant.price),
+    currencyCode: resolvedProduct.currency || "GBP",
+    selectedOptions: [
+      ...(variant.color ? [{ name: "Color", value: variant.color }] : []),
+      ...(variant.size ? [{ name: "Size", value: variant.size }] : []),
+    ],
+    image: resolvedProduct.imageUrl || "",
+    imageAlt: item.name,
+    artClass: item.artClass,
+    tag: item.tag,
+    availableOptions: [
+      {
+        name: "Color",
+        values: resolvedProduct.options?.colors || [],
+      },
+      {
+        name: "Size",
+        values: resolvedProduct.options?.sizes || [],
+      },
+    ].filter((option) => option.values.length > 0),
+    variants: (resolvedProduct.variants || []).map((entry) => ({
+      id: entry.id,
+      price: Number(entry.price),
+      currencyCode: resolvedProduct.currency || "GBP",
+      selectedOptions: [
+        ...(entry.color ? [{ name: "Color", value: entry.color }] : []),
+        ...(entry.size ? [{ name: "Size", value: entry.size }] : []),
+      ],
+    })),
+  });
+
+  trackAnalyticsEvent("ADD_TO_BASKET", item.productId, {
+    source: "favorites",
+    variantId: variant.id,
+  });
 }
 
 function renderProfileFavoritesPreview() {
@@ -739,7 +1206,7 @@ function renderProfilePage(profile) {
           </div>
           <div class="order-summary-meta">
             <span>${formatDate(order.purchaseDate)}</span>
-            <span>${order.status}</span>
+            <span class="order-status-chip" data-status="${order.status}">${toTitleCase(order.status)}</span>
           </div>
         `;
         ordersSummary.appendChild(item);
@@ -767,15 +1234,18 @@ function renderOrderDetails(order) {
 
   detailContent.innerHTML = `
     <div class="order-detail-heading">
-      <div>
+      <div class="order-detail-heading-copy">
         <p class="product-tag">Order #${order.orderNumber}</p>
         <h2>${formatCurrency(order.totalAmount, order.currency)}</h2>
+        <p class="order-detail-subcopy">Placed ${formatDate(order.purchaseDate)} · ${order.items.length} item${order.items.length === 1 ? "" : "s"}</p>
       </div>
-      <span class="order-status-chip">${order.status}</span>
+      <span class="order-status-chip" data-status="${order.status}">${toTitleCase(order.status)}</span>
     </div>
     <dl class="order-detail-grid">
       <div><dt>Purchase Date</dt><dd>${formatDate(order.purchaseDate)}</dd></div>
       <div><dt>Delivery Date</dt><dd>${formatDate(order.deliveryDate)}</dd></div>
+      <div><dt>Shipped At</dt><dd>${formatDate(order.shippedAt)}</dd></div>
+      <div><dt>Tracking Number</dt><dd>${order.trackingNumber || "Not assigned yet"}</dd></div>
       <div><dt>Discount Code</dt><dd>${order.discountCode || "None used"}</dd></div>
       <div><dt>Customer</dt><dd>${order.user?.name || "Private Access Member"}${order.user?.email ? `<br>${order.user.email}` : ""}</dd></div>
     </dl>
@@ -788,6 +1258,9 @@ function renderOrderDetails(order) {
               <div>
                 <p class="product-tag">${item.variant || "Standard variant"}</p>
                 <h4>${item.productName}</h4>
+                <p class="order-line-description">
+                  ${[item.color, item.size].filter(Boolean).join(" / ") || "Private access selection"}
+                </p>
               </div>
               <div class="order-line-meta">
                 <span>Qty ${item.quantity}</span>
@@ -845,7 +1318,7 @@ async function handleApprovalAction(button, action, refreshCallback) {
     );
     await refreshCallback();
   } catch (error) {
-    window.alert(error.message);
+    showToast(error.message, "error");
   } finally {
     setButtonLoading(button, false);
   }
@@ -965,14 +1438,22 @@ async function renderOrdersPage() {
     card.type = "button";
     card.className = "order-card";
     card.dataset.orderNumber = String(order.orderNumber);
+    const lineCount = order.items?.reduce(
+      (sum, item) => sum + Number(item.quantity || 0),
+      0,
+    );
+    const leadItem = order.items?.[0];
     card.innerHTML = `
-      <div>
+      <div class="order-card-copy">
         <p class="product-tag">Order #${order.orderNumber}</p>
-        <h3>${formatCurrency(order.totalAmount, order.currency)}</h3>
+        <h3>${leadItem?.productName || "VOIZN order"}</h3>
+        <p class="order-card-summary">
+          ${lineCount || order.items?.length || 0} piece${lineCount === 1 ? "" : "s"} · ${formatCurrency(order.totalAmount, order.currency)}
+        </p>
       </div>
       <div class="order-card-meta">
         <span>${formatDate(order.purchaseDate)}</span>
-        <span>${order.user?.name || "VOIZN member"}</span>
+        <span class="order-status-chip" data-status="${order.status}">${toTitleCase(order.status)}</span>
       </div>
     `;
     card.addEventListener("click", async () => {
@@ -982,12 +1463,352 @@ async function renderOrdersPage() {
       renderOrderDetails(detail.order);
     });
     list.appendChild(card);
+
+    if (state.currentUser?.role === "ADMIN") {
+      const controls = document.createElement("div");
+      controls.className = "admin-order-controls";
+      controls.innerHTML = `
+        <select class="admin-order-status">
+          ${["PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"]
+            .map(
+              (status) =>
+                `<option value="${status}" ${status === order.status ? "selected" : ""}>${toTitleCase(status)}</option>`,
+            )
+            .join("")}
+        </select>
+        <input class="admin-order-tracking" type="text" placeholder="Tracking number" value="${order.trackingNumber || ""}" />
+        <button class="tile-link admin-order-save" type="button">Save</button>
+      `;
+      controls.querySelector(".admin-order-save")?.addEventListener("click", async () => {
+        const status = controls.querySelector(".admin-order-status")?.value;
+        const trackingNumber = controls.querySelector(".admin-order-tracking")?.value.trim();
+        await apiFetch(`/api/admin/orders/${order.orderNumber}/status`, {
+          method: "PATCH",
+          body: JSON.stringify({ status, trackingNumber: trackingNumber || null }),
+        });
+        await renderOrdersPage();
+      });
+      list.appendChild(controls);
+    }
   });
 
   if (state.currentUser?.role === "ADMIN") {
     const pendingUsers = await fetchPendingApprovals();
     renderPendingApprovals(pendingUsers);
   }
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatDateTime(value) {
+  if (!value) return "Not available";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Not available";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
+function debounce(callback, delay = 250) {
+  let timeoutId = null;
+  return (...args) => {
+    window.clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(() => callback(...args), delay);
+  };
+}
+
+async function initializeAnalyticsPage() {
+  if (pageType !== "admin-analytics") {
+    return;
+  }
+
+  if (state.currentUser?.role !== "ADMIN") {
+    window.location.replace("profile.html");
+    return;
+  }
+
+  const summaryGrid = requireSelector("#analytics-summary-grid");
+  const activityFeed = requireSelector("#analytics-activity-feed");
+  const productsBody = requireSelector("#analytics-products-body");
+  const filtersForm = requireSelector("#analytics-filters");
+  const rangeButtons = Array.from(document.querySelectorAll("[data-analytics-range]"));
+  const rangeInput = requireSelector("#analytics-range");
+  const searchInput = requireSelector("#analytics-search");
+  const eventTypeSelect = requireSelector("#analytics-event-type");
+  const fromInput = requireSelector("#analytics-from");
+  const toInput = requireSelector("#analytics-to");
+
+  if (!summaryGrid || !activityFeed || !productsBody || !filtersForm) {
+    return;
+  }
+
+  const analyticsState = {
+    range: "7d",
+    eventType: "all",
+    search: "",
+    from: "",
+    to: "",
+    page: 1,
+  };
+
+  const buildParams = () => {
+    const params = new URLSearchParams();
+    params.set("range", analyticsState.range);
+    params.set("eventType", analyticsState.eventType);
+    params.set("page", String(analyticsState.page));
+    params.set("limit", "24");
+    if (analyticsState.search) params.set("search", analyticsState.search);
+    if (analyticsState.from) params.set("from", analyticsState.from);
+    if (analyticsState.to) params.set("to", analyticsState.to);
+    return params;
+  };
+
+  const renderSummaryCards = (summary) => {
+    const cards = [
+      ["Today’s Page Views", summary.totals.todaysPageViews, "Live site traffic today"],
+      [
+        "Top Clicked Product",
+        summary.productLeaders.topClickedProduct
+          ? `${summary.productLeaders.topClickedProduct.name} (${summary.productLeaders.topClickedProduct.count})`
+          : "No signal yet",
+        summary.range,
+      ],
+      [
+        "Most Added To Basket",
+        summary.productLeaders.mostAddedToBasketProduct
+          ? `${summary.productLeaders.mostAddedToBasketProduct.name} (${summary.productLeaders.mostAddedToBasketProduct.count})`
+          : "No signal yet",
+        summary.range,
+      ],
+      [
+        "Most Favourited",
+        summary.productLeaders.mostFavoritedProduct
+          ? `${summary.productLeaders.mostFavoritedProduct.name} (${summary.productLeaders.mostFavoritedProduct.count})`
+          : "No signal yet",
+        summary.range,
+      ],
+      ["Checkout Starts", summary.totals.checkoutStarts, summary.range],
+      ["New Signups", summary.totals.newSignups, summary.range],
+      ["Approval Requests", summary.totals.approvalRequests, summary.range],
+      ["Orders Placed", summary.totals.ordersPlaced, summary.range],
+      ["Back In Stock Signups", summary.totals.backInStockSignups, summary.range],
+      ["Drop Notification Signups", summary.totals.dropNotificationSignups, summary.range],
+    ];
+
+    summaryGrid.innerHTML = cards
+      .map(
+        ([label, value, subcopy]) => `
+          <article class="analytics-card analytics-card-extended">
+            <p class="product-tag">${escapeHtml(label)}</p>
+            <h3>${escapeHtml(value)}</h3>
+            <p class="analytics-card-subcopy">${escapeHtml(subcopy)}</p>
+          </article>
+        `,
+      )
+      .join("");
+  };
+
+  const renderProductPerformance = (payload) => {
+    if (!payload.products.length) {
+      productsBody.innerHTML = `
+        <tr>
+          <td colspan="8">
+            <div class="analytics-empty-state">
+              <h3>No product analytics yet</h3>
+              <p>Once shoppers start clicking, saving, and adding pieces to basket, product performance will appear here.</p>
+            </div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    productsBody.innerHTML = payload.products
+      .map(
+        (product) => `
+          <tr>
+            <td>
+              <div class="analytics-product-cell">
+                <strong>${escapeHtml(product.name)}</strong>
+                <span>${escapeHtml(product.slug || "No product page linked")}</span>
+              </div>
+            </td>
+            <td>${product.views}</td>
+            <td>${product.clicks}</td>
+            <td>${product.addToBasket}</td>
+            <td>${product.favorites}</td>
+            <td>${product.checkoutStarts}</td>
+            <td>${product.orders}</td>
+            <td>${product.conversionRate}%</td>
+          </tr>
+        `,
+      )
+      .join("");
+  };
+
+  const renderActivityFeed = (payload) => {
+    if (!payload.items.length) {
+      activityFeed.innerHTML = `
+        <div class="analytics-empty-state">
+          <h3>${analyticsState.search || analyticsState.eventType !== "all" ? "No matching events" : "No activity yet"}</h3>
+          <p>${analyticsState.search || analyticsState.eventType !== "all"
+            ? "Try widening the date range or clearing a filter."
+            : "High-intent customer actions will appear here once visitors start engaging with products."}</p>
+        </div>
+      `;
+      return;
+    }
+
+    activityFeed.innerHTML = payload.items
+      .map((event) => {
+        const actions = [
+          event.actions?.productHref
+            ? `<a class="analytics-action-button" href="${escapeHtml(event.actions.productHref)}">View Product</a>`
+            : "",
+          event.actions?.orderHref
+            ? `<a class="analytics-action-button" href="${escapeHtml(event.actions.orderHref)}">View Order</a>`
+            : "",
+          event.actions?.userEmail
+            ? `<a class="analytics-action-button" href="mailto:${escapeHtml(event.actions.userEmail)}">View User</a>`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("");
+
+        const countMarkup =
+          event.count > 1
+            ? `<span class="analytics-count-chip">${event.count} today</span>`
+            : "";
+
+        return `
+          <article class="analytics-event-row analytics-event-row-rich" data-event-type="${escapeHtml(event.eventType)}">
+            <div class="analytics-event-main">
+              <div class="analytics-event-heading">
+                <p class="product-tag">${escapeHtml(event.label)}</p>
+                ${countMarkup}
+              </div>
+              <h3>${escapeHtml(event.summaryText)}</h3>
+              <p class="analytics-event-context">
+                <span>${escapeHtml(event.userEmail || "Guest")}</span>
+                <span>${escapeHtml(event.browser || "Browser")}</span>
+                <span>${escapeHtml(event.device || "Device")}</span>
+                <span>${escapeHtml(event.country || "Country unavailable")}</span>
+              </p>
+              <p class="analytics-event-subcopy">${escapeHtml(event.path || event.product?.name || "VOIZN store activity")}</p>
+              ${
+                actions
+                  ? `<div class="analytics-event-actions">${actions}</div>`
+                  : ""
+              }
+            </div>
+            <div class="analytics-event-time">
+              <strong>${escapeHtml(formatDate(event.latestAt))}</strong>
+              <span>${escapeHtml(formatDateTime(event.latestAt))}</span>
+            </div>
+          </article>
+        `;
+      })
+      .join("");
+  };
+
+  const loadAnalytics = async () => {
+    const params = buildParams().toString();
+    try {
+      const [summaryPayload, activityPayload, productsPayload] = await Promise.all([
+        apiFetch(`/api/admin/analytics/summary?${params}`, { method: "GET" }),
+        apiFetch(`/api/admin/analytics/activity?${params}`, { method: "GET" }),
+        apiFetch(`/api/admin/analytics/products?${params}`, { method: "GET" }),
+      ]);
+
+      renderSummaryCards(summaryPayload.summary);
+      renderActivityFeed(activityPayload.activity);
+      renderProductPerformance(productsPayload.products);
+    } catch (error) {
+      const message = escapeHtml(error.message || "Analytics are temporarily unavailable.");
+      summaryGrid.innerHTML = `<article class="analytics-card analytics-card-extended"><p class="product-tag">Analytics unavailable</p><h3>VOIZN signal paused</h3><p class="analytics-card-subcopy">${message}</p></article>`;
+      activityFeed.innerHTML = `<div class="analytics-empty-state"><h3>Unable to load activity</h3><p>${message}</p></div>`;
+      productsBody.innerHTML = `<tr><td colspan="8"><div class="analytics-empty-state"><h3>Unable to load product analytics</h3><p>${message}</p></div></td></tr>`;
+    }
+  };
+
+  const reloadAnalytics = debounce(() => {
+    analyticsState.page = 1;
+    loadAnalytics();
+  }, 200);
+
+  rangeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      analyticsState.range = button.dataset.analyticsRange || "7d";
+      analyticsState.from = "";
+      analyticsState.to = "";
+      if (rangeInput) rangeInput.value = analyticsState.range;
+      if (fromInput) fromInput.value = "";
+      if (toInput) toInput.value = "";
+      rangeButtons.forEach((entry) =>
+        entry.classList.toggle(
+          "is-active",
+          entry.dataset.analyticsRange === analyticsState.range,
+        ),
+      );
+      reloadAnalytics();
+    });
+  });
+
+  if (rangeInput) {
+    rangeInput.addEventListener("change", () => {
+      analyticsState.range = rangeInput.value || "7d";
+      reloadAnalytics();
+    });
+  }
+
+  if (eventTypeSelect) {
+    eventTypeSelect.addEventListener("change", () => {
+      analyticsState.eventType = eventTypeSelect.value || "all";
+      reloadAnalytics();
+    });
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      analyticsState.search = searchInput.value.trim();
+      reloadAnalytics();
+    });
+  }
+
+  [fromInput, toInput].forEach((input) => {
+    if (!input) return;
+    input.addEventListener("change", () => {
+      analyticsState.from = fromInput?.value || "";
+      analyticsState.to = toInput?.value || "";
+      if (analyticsState.from || analyticsState.to) {
+        analyticsState.range = "custom";
+        rangeButtons.forEach((entry) => entry.classList.remove("is-active"));
+      }
+      reloadAnalytics();
+    });
+  });
+
+  filtersForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    reloadAnalytics();
+  });
+
+  rangeButtons.forEach((entry) =>
+    entry.classList.toggle("is-active", entry.dataset.analyticsRange === analyticsState.range),
+  );
+
+  await loadAnalytics();
 }
 
 function setupSortProducts() {
@@ -1039,15 +1860,12 @@ function setupAuthPage() {
     return;
   }
 
-  const entryForm = requireSelector("#entry-form");
-  const entryMessage = requireSelector("#entry-message");
   const redirectTarget =
     new URLSearchParams(window.location.search).get("redirect") || "index.html";
   const signInMessage = requireSelector("#signin-message");
   const signUpMessage = requireSelector("#signup-message");
   const verifyMessage = requireSelector("#verify-message");
   const passwordMessage = requireSelector("#password-message");
-  const oauthMessage = requireSelector("#oauth-message");
   const signupStartForm = requireSelector("#signup-start-form");
   const verifyCodeForm = requireSelector("#verify-code-form");
   const setPasswordForm = requireSelector("#set-password-form");
@@ -1069,35 +1887,6 @@ function setupAuthPage() {
     email: "",
     setupToken: "",
   };
-
-  if (pageType === "signin" && !hasEarlyAccessEntry()) {
-    window.location.replace("login.html");
-    return;
-  }
-
-  entryForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const submitButton = entryForm.querySelector('button[type="submit"]');
-    setButtonLoading(submitButton, true, "Checking");
-    showFieldMessage(entryMessage, "");
-
-    const username = requireSelector("#entry-username")?.value.trim().toLowerCase();
-    const password = requireSelector("#entry-password")?.value || "";
-
-    try {
-      const passwordHash = await hashPassword(password);
-      if (!username || EARLY_ACCESS_USERS[username] !== passwordHash) {
-        throw new Error("Incorrect early access username or password.");
-      }
-
-      sessionStorage.setItem(EARLY_ACCESS_STORAGE_KEY, "granted");
-      window.location.href = "signin.html";
-    } catch (error) {
-      showFieldMessage(entryMessage, error.message, "error");
-    } finally {
-      setButtonLoading(submitButton, false);
-    }
-  });
 
   const signupFrames = document.querySelectorAll("[data-signup-frame]");
   const setSignupFrame = (frameName) => {
@@ -1134,7 +1923,7 @@ function setupAuthPage() {
   if (errorCode === "signin-required") {
     showFieldMessage(
       signInMessage,
-      "Sign in to continue into the private website.",
+      "Sign in to continue into VOIZN.",
       "error",
     );
   }
@@ -1157,7 +1946,14 @@ function setupAuthPage() {
       state.currentUser = payload.user;
       window.location.replace(redirectTarget);
     } catch (error) {
-      showFieldMessage(signInMessage, error.message, "error");
+      if (error.code === "access_not_approved") {
+        const status = error.message.includes("waiting")
+          ? "PENDING_APPROVAL"
+          : "REJECTED";
+        window.location.href = `access-status.html?status=${status.toLowerCase()}`;
+      } else {
+        showFieldMessage(signInMessage, error.message, "error");
+      }
     } finally {
       setButtonLoading(submitButton, false);
     }
@@ -1260,7 +2056,7 @@ function setupAuthPage() {
         "success",
       );
       setTimeout(() => {
-        window.location.href = "signin.html";
+        window.location.href = "access-status.html?status=pending_approval";
       }, 1800);
     } catch (error) {
       showFieldMessage(passwordMessage, error.message, "error");
@@ -1278,12 +2074,10 @@ function setupAuthPage() {
 
     setButtonLoading(resendButton, true, "Sending");
     try {
-      await apiFetch("/api/auth/signup/start", {
+      await apiFetch("/api/auth/signup/resend-code", {
         method: "POST",
         body: JSON.stringify({
-          name: requireSelector("#signup-name")?.value.trim() || "VOIZN Member",
           email,
-          country: requireSelector("#signup-country")?.value.trim() || "",
         }),
       });
       authFlowState.email = email.toLowerCase();
@@ -1364,27 +2158,6 @@ function setupAuthPage() {
     showFieldMessage(resetSentMessage, "");
   });
 
-  document.querySelectorAll("[data-oauth-provider]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const provider = button.dataset.oauthProvider;
-      setButtonLoading(button, true, "Loading");
-      showFieldMessage(oauthMessage, "");
-
-      try {
-        await apiFetch(`/api/auth/oauth/${provider}`, {
-          method: "GET",
-        });
-      } catch (error) {
-        showFieldMessage(
-          oauthMessage,
-          error.message,
-          error.code === "oauth_not_configured" ? "info" : "error",
-        );
-      } finally {
-        setButtonLoading(button, false);
-      }
-    });
-  });
 }
 
 async function initializeProfilePage() {
@@ -1398,6 +2171,7 @@ async function initializeProfilePage() {
   }
 
   try {
+    showLoadingState("#profile-favorites-preview", 2);
     const payload = await apiFetch("/api/profile", {
       method: "GET",
     });
@@ -1405,7 +2179,7 @@ async function initializeProfilePage() {
     state.favoritesMap = createFavoriteMap(state.favorites);
     renderProfilePage(payload.profile);
   } catch (error) {
-    window.alert(error.message);
+    showToast(error.message, "error");
   }
 }
 
@@ -1415,7 +2189,15 @@ async function initializeOrdersPage() {
   }
 
   try {
+    showLoadingState("#orders-list", 3);
     await renderOrdersPage();
+    const focusedOrder = new URLSearchParams(window.location.search).get("order");
+    if (focusedOrder) {
+      const detail = await apiFetch(`/api/orders/${focusedOrder}`, {
+        method: "GET",
+      });
+      renderOrderDetails(detail.order);
+    }
   } catch (error) {
     const empty = requireSelector("#orders-empty");
     if (empty) {
@@ -1433,13 +2215,28 @@ async function initializeFavoritesPage() {
   renderFavoritesPage();
 }
 
+function initializeAccessStatusPage() {
+  if (pageType !== "access-status") {
+    return;
+  }
+
+  const status = new URLSearchParams(window.location.search).get("status") || "pending_approval";
+  const copy = buildAccessCopy(status);
+  const title = requireSelector("#access-status-title");
+  const body = requireSelector("#access-status-copy");
+  if (title) title.textContent = copy.title;
+  if (body) body.textContent = copy.description;
+}
+
 async function initializeCommonAuthenticatedFeatures() {
+  setupFavorites();
+
   if (!state.currentUser) {
     return;
   }
 
   await loadFavorites();
-  setupFavorites();
+  updateFavoriteButtons();
 
   if (pageType === "favorites") {
     renderFavoritesPage();
@@ -1447,14 +2244,17 @@ async function initializeCommonAuthenticatedFeatures() {
 }
 
 async function main() {
+  setupPageTransitions();
   setupThemeToggle();
   setupMenu();
   setupDropdowns();
+  setupScrollCinema();
   setupSearchForms();
-  setupSortProducts();
   setupRevealObserver();
   setupAuthPage();
   await bootstrapAuth();
+  await loadCatalogState();
+  setupDropExperience();
 
   if (isAuthPage && state.currentUser) {
     window.location.replace("index.html");
@@ -1462,12 +2262,20 @@ async function main() {
   }
 
   setupHeader();
+  enhanceCatalogCards();
+  setupSortProducts();
   await initializeCommonAuthenticatedFeatures();
   await initializeProfilePage();
   await initializeOrdersPage();
   await initializeFavoritesPage();
   await initializeAdminApprovalsPage();
+  await initializeAnalyticsPage();
+  initializeAccessStatusPage();
+  trackAnalyticsEvent("PAGE_VIEW");
 }
+
+window.trackAnalyticsEvent = trackAnalyticsEvent;
+window.showToast = showToast;
 
 main().catch((error) => {
   console.error("VOIZN frontend bootstrap failed:", error);

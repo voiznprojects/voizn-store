@@ -3,6 +3,8 @@ import cors from "cors";
 import express from "express";
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import analyticsRoutes from "./routes/analyticsRoutes.js";
+import catalogRoutes from "./routes/catalogRoutes.js";
 import favoriteRoutes from "./routes/favoriteRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
@@ -34,6 +36,8 @@ app.get("/api/health", (_request, response) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/catalog", catalogRoutes);
 app.use("/api/favorites", favoriteRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/profile", profileRoutes);

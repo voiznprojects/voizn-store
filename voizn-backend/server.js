@@ -1,7 +1,8 @@
 import { app, env } from "./src/app.js";
+import { ensureCatalogSeedData } from "./src/services/catalogService.js";
 import { ensureSeedData } from "./src/services/userService.js";
 
-ensureSeedData()
+Promise.all([ensureSeedData(), ensureCatalogSeedData()])
   .then(() => {
     app.listen(env.port, () => {
       console.log(`VOIZN backend listening on http://127.0.0.1:${env.port}`);
