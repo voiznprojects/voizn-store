@@ -1,4 +1,6 @@
 const THEME_STORAGE_KEY = "voizn-theme";
+const CATALOG_CACHE_KEY = "voizn-catalog-cache-v1";
+const CATALOG_CACHE_TTL = 1000 * 60 * 5;
 const API_CONFIG = window.VOIZN_CONFIG || {};
 const API_BASE_URL =
   API_CONFIG.apiBaseUrl ||
@@ -209,6 +211,33 @@ function showToast(message, type = "info") {
   state.toastTimeouts.add(timeoutId);
 }
 
+function getCachedCatalogState() {
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(CATALOG_CACHE_KEY) || "null");
+    if (!cached?.timestamp || Date.now() - cached.timestamp > CATALOG_CACHE_TTL) {
+      return null;
+    }
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedCatalogState(products, drops) {
+  try {
+    sessionStorage.setItem(
+      CATALOG_CACHE_KEY,
+      JSON.stringify({
+        timestamp: Date.now(),
+        products,
+        drops,
+      }),
+    );
+  } catch {
+    // Ignore storage issues and keep runtime state only.
+  }
+}
+
 function setupPageTransitions() {
   let overlay = document.querySelector(".page-transition");
   if (!overlay) {
@@ -219,31 +248,6 @@ function setupPageTransitions() {
 
   requestAnimationFrame(() => {
     document.body.classList.add("page-ready");
-  });
-
-  document.addEventListener("click", (event) => {
-    const link = event.target.closest("a[href]");
-    if (!link) {
-      return;
-    }
-
-    const href = link.getAttribute("href") || "";
-    if (
-      link.target === "_blank" ||
-      href.startsWith("#") ||
-      href.startsWith("mailto:") ||
-      href.startsWith("tel:") ||
-      href.startsWith("http")
-    ) {
-      return;
-    }
-
-    event.preventDefault();
-    document.body.classList.remove("page-ready");
-    document.body.classList.add("page-leaving");
-    window.setTimeout(() => {
-      window.location.href = href;
-    }, 240);
   });
 }
 
@@ -290,6 +294,15 @@ function createFavoriteMap(items) {
 }
 
 async function loadCatalogState() {
+  const cached = getCachedCatalogState();
+  if (cached) {
+    state.catalogProducts = cached.products || [];
+    state.catalogMap = new Map(
+      state.catalogProducts.map((product) => [slugify(product.name), product]),
+    );
+    state.drops = cached.drops || [];
+  }
+
   try {
     const [productsPayload, dropsPayload] = await Promise.all([
       apiFetch("/api/catalog/products", { method: "GET" }),
@@ -300,11 +313,14 @@ async function loadCatalogState() {
       state.catalogProducts.map((product) => [slugify(product.name), product]),
     );
     state.drops = dropsPayload.drops || [];
+    setCachedCatalogState(state.catalogProducts, state.drops);
   } catch (error) {
     console.warn("VOIZN catalog bootstrap failed:", error.message);
-    state.catalogProducts = [];
-    state.catalogMap = new Map();
-    state.drops = [];
+    if (!cached) {
+      state.catalogProducts = [];
+      state.catalogMap = new Map();
+      state.drops = [];
+    }
   }
 }
 
@@ -640,10 +656,9 @@ function setupHeader() {
     return;
   }
 
-  const searchBox = headerLeft.querySelector(".search-box");
   const bagLink = headerLeft.querySelector('.icon-link[aria-label="Basket"]');
-  const navSupportLink = siteNav.querySelector('.nav-link[href="support.html"]');
   let favoritesLink = headerLeft.querySelector(".favorites-link");
+  let profileMenu = siteNav.querySelector(".profile-menu");
 
   if (!favoritesLink) {
     favoritesLink = document.createElement("a");
@@ -655,30 +670,40 @@ function setupHeader() {
   }
   favoritesLink.innerHTML =
     '<span class="icon-heart" aria-hidden="true"></span>';
-
-  headerLeft.innerHTML = "";
-  if (searchBox) {
-    headerLeft.appendChild(searchBox);
-  }
   if (bagLink) {
     bagLink.href = "basket.html";
-    headerLeft.appendChild(bagLink);
   }
-  headerLeft.appendChild(favoritesLink);
+  if (!favoritesLink.parentElement && bagLink?.parentElement === headerLeft) {
+    headerLeft.appendChild(favoritesLink);
+  }
 
-  siteNav.querySelectorAll(".profile-menu").forEach((menu) => menu.remove());
+  if (!profileMenu) {
+    profileMenu = document.createElement("div");
+    profileMenu.className = "profile-menu";
+    profileMenu.innerHTML = `
+      <button class="icon-link profile-trigger" type="button" aria-expanded="false" aria-label="Open account menu">
+        <span class="icon-user" aria-hidden="true"></span>
+      </button>
+      <div class="profile-dropdown"></div>
+    `;
+    siteNav.appendChild(profileMenu);
+  }
 
-  const profileMenu = document.createElement("div");
-  profileMenu.className = "profile-menu";
-  const trigger = document.createElement("button");
-  trigger.className = "icon-link profile-trigger";
-  trigger.type = "button";
+  const trigger = profileMenu.querySelector(".profile-trigger, .icon-link[aria-label='Profile']");
+  if (!trigger) {
+    return;
+  }
+
+  trigger.classList.add("profile-trigger");
   trigger.setAttribute("aria-expanded", "false");
   trigger.setAttribute("aria-label", "Open account menu");
-  trigger.innerHTML = '<span class="icon-user" aria-hidden="true"></span>';
 
-  const panel = document.createElement("div");
-  panel.className = "profile-dropdown";
+  let panel = profileMenu.querySelector(".profile-dropdown");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.className = "profile-dropdown";
+    profileMenu.appendChild(panel);
+  }
 
   if (state.currentUser) {
     panel.innerHTML = `
@@ -703,67 +728,34 @@ function setupHeader() {
     `;
   }
 
-  profileMenu.appendChild(trigger);
-  profileMenu.appendChild(panel);
-  if (navSupportLink) {
-    navSupportLink.insertAdjacentElement("afterend", profileMenu);
-  } else {
-    siteNav.appendChild(profileMenu);
-  }
-
-  let navUtilityLinks = siteNav.querySelector(".nav-utility-links");
-  if (!navUtilityLinks) {
-    navUtilityLinks = document.createElement("div");
-    navUtilityLinks.className = "nav-utility-links";
-    siteNav.insertBefore(navUtilityLinks, siteNav.firstChild);
-  }
-
-  if (navUtilityLinks) {
-    const mobileSearch = siteNav.querySelector(".search-box");
-    const mobileFavorites = favoritesLink.cloneNode(true);
-    const mobileBag = bagLink ? bagLink.cloneNode(true) : null;
-    const mobileProfile = document.createElement("a");
-    mobileProfile.className = "account-link";
-    mobileProfile.href = state.currentUser ? "profile.html" : "login.html";
-    mobileProfile.textContent = state.currentUser ? "Profile" : "Log In";
-
-    const mobileOrders = document.createElement("a");
-    mobileOrders.className = "account-link";
-    mobileOrders.href = state.currentUser ? "orders.html" : "login.html";
-    mobileOrders.textContent = state.currentUser ? "Your Orders" : "Request Access";
-
-    navUtilityLinks.innerHTML = "";
-    if (mobileSearch) {
-      navUtilityLinks.appendChild(mobileSearch);
-    }
-    navUtilityLinks.appendChild(mobileFavorites);
-    if (mobileBag) {
-      mobileBag.href = "basket.html";
-      navUtilityLinks.appendChild(mobileBag);
-    }
-    navUtilityLinks.appendChild(mobileProfile);
-    navUtilityLinks.appendChild(mobileOrders);
-  }
-
-  trigger.addEventListener("click", () => {
-    const isOpen = profileMenu.classList.toggle("open");
-    trigger.setAttribute("aria-expanded", String(isOpen));
-  });
-
-  document.addEventListener("click", (event) => {
-    const targetMenu = event.target.closest(".profile-menu");
-    document.querySelectorAll(".profile-menu").forEach((menu) => {
-      const menuTrigger = menu.querySelector(".profile-trigger");
-      if (!menuTrigger) {
-        return;
-      }
-
-      if (!targetMenu || targetMenu !== menu) {
-        menu.classList.remove("open");
-        menuTrigger.setAttribute("aria-expanded", "false");
-      }
+  if (!profileMenu.dataset.bound) {
+    trigger.addEventListener("click", () => {
+      const isOpen = profileMenu.classList.toggle("open");
+      trigger.setAttribute("aria-expanded", String(isOpen));
     });
-  });
+    profileMenu.dataset.bound = "true";
+  }
+
+  if (!header.dataset.profileMenusBound) {
+    document.addEventListener("click", (event) => {
+      const targetMenu = event.target.closest(".profile-menu");
+      document.querySelectorAll(".profile-menu").forEach((menu) => {
+        const menuTrigger = menu.querySelector(".profile-trigger");
+        if (!menuTrigger) {
+          return;
+        }
+
+        if (!targetMenu || targetMenu !== menu) {
+          menu.classList.remove("open");
+          menuTrigger.setAttribute("aria-expanded", "false");
+        }
+      });
+    });
+    header.dataset.profileMenusBound = "true";
+  }
+
+  trigger.setAttribute("aria-expanded", "false");
+  trigger.setAttribute("aria-label", "Open account menu");
 
   panel.querySelectorAll(".logout-button").forEach((button) => {
     button.addEventListener("click", logoutUser);
@@ -1855,6 +1847,10 @@ function setupSearchForms() {
   });
 }
 
+function markPageReady() {
+  document.body.classList.add("page-ready");
+}
+
 function setupAuthPage() {
   if (!isAuthPage) {
     return;
@@ -2252,8 +2248,16 @@ async function main() {
   setupSearchForms();
   setupRevealObserver();
   setupAuthPage();
-  await bootstrapAuth();
-  await loadCatalogState();
+  setupHeader();
+  markPageReady();
+
+  const [authResult] = await Promise.allSettled([
+    bootstrapAuth(),
+    loadCatalogState(),
+  ]);
+  if (authResult.status === "fulfilled") {
+    state.currentUser = authResult.value;
+  }
   setupDropExperience();
 
   if (isAuthPage && state.currentUser) {

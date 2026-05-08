@@ -169,6 +169,10 @@ body[data-theme="light"] .site-header {
     gap: 14px;
 }
 
+.header-left > .utility-link,
+.header-left > .icon-link[aria-label="Profile"] {
+    display: none;
+}
 .header-right {
     display: none;
 }

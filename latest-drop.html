@@ -11,9 +11,9 @@
             href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Oswald:wght@400;500;700&display=swap"
             rel="stylesheet"
         />
-        <link rel="stylesheet" href="assets/css/style.css" />
+        <link rel="stylesheet" href="assets/css/style.css?v=6" />
     </head>
-    <body data-protected="true">
+    <body data-theme="dark" data-protected="true">
         <div class="topbar">
             <div class="topbar-marquee">
                 <div class="topbar-track">
@@ -43,12 +43,11 @@
                     <span class="icon-search" aria-hidden="true"></span>
                     <input type="search" placeholder="Search" aria-label="Search" />
                 </form>
-                <a class="utility-link" href="support.html">Support</a>
-                <a class="icon-link" href="#" aria-label="Profile">
-                    <span class="icon-user" aria-hidden="true"></span>
-                </a>
-                <a class="icon-link" href="#" aria-label="Basket">
+                <a class="icon-link" href="basket.html" aria-label="Basket">
                     <span class="icon-bag" aria-hidden="true"></span>
+                </a>
+                <a class="favorites-link" href="favorites.html" aria-label="Favourites">
+                    <span class="icon-heart" aria-hidden="true"></span>
                 </a>
             </div>
 
@@ -80,6 +79,12 @@
                 </div>
                 <a class="nav-link" href="story.html">Story</a>
                 <a class="nav-link" href="support.html">Support</a>
+                <div class="profile-menu">
+                    <button class="icon-link profile-trigger" type="button" aria-expanded="false" aria-label="Open account menu">
+                        <span class="icon-user" aria-hidden="true"></span>
+                    </button>
+                    <div class="profile-dropdown"></div>
+                </div>
             </nav>
         </header>
 
@@ -222,9 +227,9 @@
             </div>
         </footer>
 
-        <script src="assets/js/script.js"></script>
-        <script src="assets/js/shopify-config.js?v=2"></script>
-        <script src="assets/js/shopify.js?v=2"></script>
+        <script src="assets/js/script.js?v=6"></script>
+        <script src="assets/js/shopify-config.js?v=6"></script>
+        <script src="assets/js/shopify.js?v=6"></script>
     </body>
 </html>
 

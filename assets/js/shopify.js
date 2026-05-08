@@ -6,6 +6,7 @@
   const BASKET_STORAGE_KEY = "voizn-basket-items";
   const AUTH_STORAGE_KEY = "voizn-authenticated-user";
   const FAVORITES_STORAGE_KEY_PREFIX = "voizn-favorites";
+  const SHOPIFY_PRODUCT_CACHE_KEY = "voizn-shopify-product-cache-v1";
   const API_BASE_URL =
     (window.VOIZN_CONFIG && window.VOIZN_CONFIG.apiBaseUrl) ||
     (["127.0.0.1", "localhost"].includes(window.location.hostname)
@@ -57,6 +58,18 @@
   };
 
   let productModalElements = null;
+
+  function getShopifyProductCache() {
+    try {
+      return JSON.parse(sessionStorage.getItem(SHOPIFY_PRODUCT_CACHE_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  }
+
+  function setShopifyProductCache(cache) {
+    sessionStorage.setItem(SHOPIFY_PRODUCT_CACHE_KEY, JSON.stringify(cache));
+  }
 
   async function backendRequest(path, options) {
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -378,6 +391,18 @@
     );
 
     return data.product;
+  }
+
+  async function fetchCachedProductByHandle(handle) {
+    const cache = getShopifyProductCache();
+    if (cache[handle]) {
+      return cache[handle];
+    }
+
+    const product = await fetchProductByHandle(handle);
+    cache[handle] = product;
+    setShopifyProductCache(cache);
+    return product;
   }
 
   function getStoredCartId() {
@@ -1886,6 +1911,94 @@
     });
   }
 
+  async function syncProductCardsWithShopify() {
+    const cards = Array.from(document.querySelectorAll(".product-card"));
+    if (!cards.length) {
+      return;
+    }
+
+    await Promise.all(
+      cards.map(async (card) => {
+        const titleNode = card.querySelector("h3");
+        const metaNode = card.querySelector(".product-meta");
+        const descriptionNode = metaNode?.querySelector("p:last-of-type");
+        const priceNode = metaNode?.querySelector("span");
+        const tagNode = card.querySelector(".product-tag");
+        const localTitle = titleNode?.textContent?.trim() || "";
+        const handle =
+          card.dataset.shopifyHandle ||
+          PRODUCT_BINDINGS[localTitle]?.handle ||
+          String(localTitle || "")
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "");
+
+        if (!handle) {
+          return;
+        }
+
+        try {
+          const product = await fetchCachedProductByHandle(handle);
+          const variants = (product?.variants?.edges || []).map(({ node }) => node);
+          const firstAvailable =
+            variants.find((variant) => variant.availableForSale) || variants[0] || null;
+          const colors = [...new Set(
+            variants
+              .flatMap((variant) => variant.selectedOptions || [])
+              .filter((option) => option.name === "Color")
+              .map((option) => option.value),
+          )];
+          const sizes = [...new Set(
+            variants
+              .flatMap((variant) => variant.selectedOptions || [])
+              .filter((option) => option.name === "Size")
+              .map((option) => option.value),
+          )];
+
+          if (titleNode && product?.title) {
+            titleNode.textContent = product.title;
+          }
+
+          if (descriptionNode && firstAvailable) {
+            const colorLead = colors[0] || "";
+            const sizeLead = sizes.length ? `${sizes[0]}-${sizes[sizes.length - 1]}` : "";
+            descriptionNode.textContent = [colorLead, sizeLead].filter(Boolean).join(" / ") || product.description || descriptionNode.textContent;
+          }
+
+          if (priceNode && firstAvailable?.price?.amount) {
+            priceNode.textContent = `${firstAvailable.price.currencyCode === "GBP" ? "£" : `${firstAvailable.price.currencyCode} `}${firstAvailable.price.amount}`;
+          }
+
+          if (tagNode && product?.handle) {
+            card.dataset.shopifyHandle = product.handle;
+          }
+
+          card.dataset.shopifySizes = JSON.stringify(sizes);
+          card.dataset.shopifyColors = JSON.stringify(colors);
+          card.dataset.shopifyAvailableCount = String(variants.filter((variant) => variant.availableForSale).length);
+        } catch (error) {
+          console.warn(`Shopify sync skipped for ${handle}:`, error.message);
+        }
+      }),
+    );
+  }
+
+  function scheduleProductCardSync() {
+    const runSync = () => {
+      syncProductCardsWithShopify().catch((error) => {
+        console.warn("Shopify product sync skipped:", error.message);
+      });
+    };
+
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(runSync, { timeout: 1200 });
+      return;
+    }
+
+    window.setTimeout(runSync, 220);
+  }
+
   window.ShopifyStorefront = {
     fetchProducts,
     fetchProductByHandle,
@@ -1905,5 +2018,6 @@
     bindShopifyButtons();
     bindProductPage();
     renderBasketPage();
+    scheduleProductCardSync();
   });
 })();
