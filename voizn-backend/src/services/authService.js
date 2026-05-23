@@ -11,9 +11,135 @@ import { compareValue, createNumericCode, hashValue } from "../utils/security.js
 import { sanitizeUser } from "./userService.js";
 
 const SIGNUP_CODE_TTL_MS = 10 * 60 * 1000;
+const LOGIN_LOCKOUT_WINDOWS_MS = [
+  60 * 1000,
+  3 * 60 * 1000,
+  5 * 60 * 1000,
+  2 * 60 * 60 * 1000,
+];
 
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
+}
+
+function createLoginThrottleError(lockedUntil, lockoutsTriggered) {
+  const error = new Error(
+    lockoutsTriggered >= LOGIN_LOCKOUT_WINDOWS_MS.length
+      ? "Too many login attempts. Try again later. Access will unlock after 2 hours."
+      : `Too many login attempts. Try again in ${Math.max(
+          1,
+          Math.ceil((lockedUntil.getTime() - Date.now()) / 60000),
+        )} minute${Math.ceil((lockedUntil.getTime() - Date.now()) / 60000) === 1 ? "" : "s"}.`,
+  );
+  error.statusCode = 429;
+  error.code = "login_rate_limited";
+  error.retryAfterSeconds = Math.max(
+    1,
+    Math.ceil((lockedUntil.getTime() - Date.now()) / 1000),
+  );
+  return error;
+}
+
+async function enforceLoginThrottle({ email, ipAddress }) {
+  const throttle = await prisma.loginThrottle.findUnique({
+    where: {
+      email_ipAddress: {
+        email,
+        ipAddress,
+      },
+    },
+  });
+
+  if (!throttle) {
+    return;
+  }
+
+  if (throttle.lockedUntil && throttle.lockedUntil.getTime() > Date.now()) {
+    throw createLoginThrottleError(
+      throttle.lockedUntil,
+      throttle.lockoutsTriggered,
+    );
+  }
+
+  if (throttle.lockedUntil) {
+    await prisma.loginThrottle.update({
+      where: {
+        email_ipAddress: {
+          email,
+          ipAddress,
+        },
+      },
+      data: {
+        lockedUntil: null,
+        failedAttempts: 0,
+      },
+    });
+  }
+}
+
+async function clearLoginThrottle({ email, ipAddress }) {
+  await prisma.loginThrottle.deleteMany({
+    where: {
+      email,
+      ipAddress,
+    },
+  });
+}
+
+async function recordFailedLoginAttempt({ email, ipAddress }) {
+  const now = new Date();
+  const throttle = await prisma.loginThrottle.upsert({
+    where: {
+      email_ipAddress: {
+        email,
+        ipAddress,
+      },
+    },
+    create: {
+      email,
+      ipAddress,
+      failedAttempts: 1,
+      lastAttemptAt: now,
+    },
+    update: {
+      failedAttempts: {
+        increment: 1,
+      },
+      lastAttemptAt: now,
+    },
+  });
+
+  if (throttle.failedAttempts < 5) {
+    return;
+  }
+
+  const stageIndex = Math.min(
+    throttle.lockoutsTriggered,
+    LOGIN_LOCKOUT_WINDOWS_MS.length - 1,
+  );
+  const lockDurationMs = LOGIN_LOCKOUT_WINDOWS_MS[stageIndex];
+  const lockedUntil = new Date(Date.now() + lockDurationMs);
+  const updatedThrottle = await prisma.loginThrottle.update({
+    where: {
+      email_ipAddress: {
+        email,
+        ipAddress,
+      },
+    },
+    data: {
+      failedAttempts: 0,
+      lockoutsTriggered: {
+        increment: 1,
+      },
+      lockedUntil,
+      lastAttemptAt: now,
+    },
+  });
+
+  throw createLoginThrottleError(
+    lockedUntil,
+    updatedThrottle.lockoutsTriggered,
+  );
 }
 
 export async function startSignup({ name, email, country }) {
@@ -221,13 +347,24 @@ export async function setPasswordAfterVerification({ setupToken, password }) {
   };
 }
 
-export async function loginWithEmailPassword({ email, password }) {
+export async function loginWithEmailPassword({ email, password, ipAddress }) {
   const normalizedEmail = normalizeEmail(email);
+  const normalizedIp = String(ipAddress || "unknown").trim().slice(0, 255) || "unknown";
+
+  await enforceLoginThrottle({
+    email: normalizedEmail,
+    ipAddress: normalizedIp,
+  });
+
   const user = await prisma.user.findUnique({
     where: { email: normalizedEmail },
   });
 
   if (!user?.passwordHash) {
+    await recordFailedLoginAttempt({
+      email: normalizedEmail,
+      ipAddress: normalizedIp,
+    });
     const error = new Error("Incorrect email or password.");
     error.statusCode = 401;
     error.code = "invalid_credentials";
@@ -236,6 +373,10 @@ export async function loginWithEmailPassword({ email, password }) {
 
   const isValidPassword = await compareValue(password, user.passwordHash);
   if (!isValidPassword) {
+    await recordFailedLoginAttempt({
+      email: normalizedEmail,
+      ipAddress: normalizedIp,
+    });
     const error = new Error("Incorrect email or password.");
     error.statusCode = 401;
     error.code = "invalid_credentials";
@@ -259,6 +400,11 @@ export async function loginWithEmailPassword({ email, password }) {
     error.code = "access_not_approved";
     throw error;
   }
+
+  await clearLoginThrottle({
+    email: normalizedEmail,
+    ipAddress: normalizedIp,
+  });
 
   return {
     ok: true,

@@ -16,6 +16,24 @@ import { asyncHandler, jsonError } from "../utils/http.js";
 
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
+function getRequestIp(request) {
+  const forwarded = request.headers["x-forwarded-for"];
+  if (typeof forwarded === "string" && forwarded.trim()) {
+    return forwarded.split(",")[0].trim();
+  }
+
+  if (Array.isArray(forwarded) && forwarded.length) {
+    return String(forwarded[0] || "").trim();
+  }
+
+  return (
+    request.ip ||
+    request.socket?.remoteAddress ||
+    request.connection?.remoteAddress ||
+    "unknown"
+  );
+}
+
 function setSessionCookie(response, token) {
   response.cookie("voizn_session", token, {
     httpOnly: true,
@@ -108,7 +126,11 @@ export const login = asyncHandler(async (request, response) => {
     return;
   }
 
-  const result = await loginWithEmailPassword({ email, password });
+  const result = await loginWithEmailPassword({
+    email,
+    password,
+    ipAddress: getRequestIp(request),
+  });
   setSessionCookie(response, result.token);
   response.json(result);
 });

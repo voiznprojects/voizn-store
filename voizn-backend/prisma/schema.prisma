@@ -97,6 +97,22 @@ model VerificationCode {
   @@index([userId, purpose])
 }
 
+model LoginThrottle {
+  id               String    @id @default(uuid())
+  email            String
+  ipAddress        String
+  failedAttempts   Int       @default(0)
+  lockoutsTriggered Int      @default(0)
+  lockedUntil      DateTime?
+  lastAttemptAt    DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([email, ipAddress])
+  @@index([email])
+  @@index([lockedUntil])
+}
+
 model AuthIdentity {
   id                String      @id @default(uuid())
   userId            String

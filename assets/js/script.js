@@ -1,6 +1,7 @@
 const THEME_STORAGE_KEY = "voizn-theme";
 const CATALOG_CACHE_KEY = "voizn-catalog-cache-v1";
 const CATALOG_CACHE_TTL = 1000 * 60 * 5;
+const DEFAULT_REQUEST_TIMEOUT_MS = 12000;
 const API_CONFIG = window.VOIZN_CONFIG || {};
 const API_BASE_URL =
   API_CONFIG.apiBaseUrl ||
@@ -27,6 +28,43 @@ const state = {
     `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
 };
 sessionStorage.setItem("voizn-analytics-session", state.analyticsSessionId);
+
+function ensureFavicon() {
+  const head = document.head;
+  if (!head) {
+    return;
+  }
+
+  const iconHref = `${window.location.origin}/favicon.png`;
+  const appleHref = `${window.location.origin}/apple-touch-icon.png`;
+
+  let iconLink = head.querySelector('link[rel="icon"]');
+  if (!iconLink) {
+    iconLink = document.createElement("link");
+    iconLink.rel = "icon";
+    head.appendChild(iconLink);
+  }
+  iconLink.type = "image/png";
+  iconLink.href = iconHref;
+
+  let shortcutLink = head.querySelector('link[rel="shortcut icon"]');
+  if (!shortcutLink) {
+    shortcutLink = document.createElement("link");
+    shortcutLink.rel = "shortcut icon";
+    head.appendChild(shortcutLink);
+  }
+  shortcutLink.type = "image/png";
+  shortcutLink.href = iconHref;
+
+  let appleLink = head.querySelector('link[rel="apple-touch-icon"]');
+  if (!appleLink) {
+    appleLink = document.createElement("link");
+    appleLink.rel = "apple-touch-icon";
+    head.appendChild(appleLink);
+  }
+  appleLink.href = appleHref;
+}
+
 function updateLightThemeDepth() {
   if (document.body.dataset.theme !== "light") {
     document.documentElement.style.removeProperty("--light-scroll-depth");
@@ -106,9 +144,18 @@ const applyTheme = (theme) => {
   updateLightThemeDepth();
 };
 
+ensureFavicon();
 applyTheme(getSavedTheme());
 
 async function apiFetch(path, options = {}) {
+  const controller = options.signal ? null : new AbortController();
+  const timeoutMs = options.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+  let timeoutId = null;
+
+  if (controller && timeoutMs > 0) {
+    timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  }
+
   let response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
@@ -118,17 +165,31 @@ async function apiFetch(path, options = {}) {
         ...(options.headers || {}),
       },
       ...options,
+      signal: options.signal || controller?.signal,
     });
   } catch (error) {
+    if (timeoutId) {
+      window.clearTimeout(timeoutId);
+    }
+
     const networkError = new Error(
-      ["127.0.0.1", "localhost"].includes(window.location.hostname)
-        ? "VOIZN backend is offline. Start the backend server and try again."
-        : "VOIZN is unable to reach the live account server right now. Please try again shortly.",
+      error?.name === "AbortError"
+        ? "VOIZN is taking too long to respond right now. Please try again."
+        : ["127.0.0.1", "localhost"].includes(window.location.hostname)
+          ? "VOIZN backend is offline. Start the backend server and try again."
+          : "VOIZN is unable to reach the live account server right now. Please try again shortly.",
     );
     networkError.status = 0;
-    networkError.code = "network_unavailable";
+    networkError.code =
+      error?.name === "AbortError"
+        ? "request_timeout"
+        : "network_unavailable";
     networkError.cause = error;
     throw networkError;
+  }
+
+  if (timeoutId) {
+    window.clearTimeout(timeoutId);
   }
 
   let data = null;
@@ -149,6 +210,14 @@ async function apiFetch(path, options = {}) {
   }
 
   return data;
+}
+
+function pageNeedsCatalogData() {
+  if (isAuthPage || pageType === "access-status") {
+    return false;
+  }
+
+  return true;
 }
 
 function showFieldMessage(element, message = "", type = "") {
@@ -2251,20 +2320,21 @@ async function main() {
   setupHeader();
   markPageReady();
 
-  const [authResult] = await Promise.allSettled([
-    bootstrapAuth(),
-    loadCatalogState(),
-  ]);
+  const catalogPromise = pageNeedsCatalogData()
+    ? loadCatalogState()
+    : Promise.resolve();
+  const [authResult] = await Promise.allSettled([bootstrapAuth()]);
   if (authResult.status === "fulfilled") {
     state.currentUser = authResult.value;
   }
-  setupDropExperience();
 
   if (isAuthPage && state.currentUser) {
     window.location.replace("index.html");
     return;
   }
 
+  await catalogPromise;
+  setupDropExperience();
   setupHeader();
   enhanceCatalogCards();
   setupSortProducts();

@@ -13,6 +13,7 @@ import { env, isAllowedOrigin } from "./config/env.js";
 import { jsonError } from "./utils/http.js";
 
 const app = express();
+app.set("trust proxy", 1);
 
 app.use(
   cors({
