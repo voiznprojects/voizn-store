@@ -235,7 +235,7 @@ export const DROP_SEED = [
     slug: "summer-static",
     title: "Summer Static",
     description: "Lighter layers, technical shorts, and cleaner warm-weather foundations.",
-    releaseDate: "2026-05-20T19:00:00.000Z",
+    releaseDate: "2026-08-01T19:00:00.000Z",
     isLocked: true,
     isPrivateAccessOnly: false,
     products: ["signal-tee", "silent-short", "drift-short"],
