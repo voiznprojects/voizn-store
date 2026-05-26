@@ -430,7 +430,7 @@ export async function startPasswordReset({ email }) {
     { sub: user.id, purpose: "password-reset" },
     "20m",
   );
-  const resetUrl = `${env.frontendBaseUrl.replace(/\/$/, "")}/reset-password.html?token=${encodeURIComponent(resetToken)}`;
+  const resetUrl = `${env.frontendBaseUrl.replace(/\/$/, "")}/reset-password/?token=${encodeURIComponent(resetToken)}`;
 
   await sendPasswordResetEmail(normalizedEmail, resetUrl);
 

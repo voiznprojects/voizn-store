@@ -29,6 +29,25 @@ const state = {
 };
 sessionStorage.setItem("voizn-analytics-session", state.analyticsSessionId);
 
+const routeFor = (name = "index", suffix = "") => {
+  const normalized = String(name || "index")
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\.html$/i, "");
+  const base = !normalized || normalized === "index" ? "/" : `/${normalized}/`;
+  return `${base}${suffix || ""}`;
+};
+
+const routeSlugFromLocation = () => {
+  const segments = window.location.pathname.split("/").filter(Boolean);
+  if (!segments.length) {
+    return "index";
+  }
+
+  const last = segments[segments.length - 1];
+  return last.replace(/\.html$/i, "") || "index";
+};
+
 function ensureFavicon() {
   const head = document.head;
   if (!head) {
@@ -415,8 +434,7 @@ function detectDevice() {
 }
 
 function deriveCurrentProductSlug() {
-  const currentFile = window.location.pathname.split("/").pop() || "";
-  const bare = currentFile.replace(/\.html$/i, "");
+  const bare = routeSlugFromLocation();
   if (state.catalogProducts.some((product) => product.slug === bare)) {
     return bare;
   }
@@ -491,9 +509,11 @@ async function bootstrapAuth() {
 
     if (isProtectedPage) {
       const redirect = encodeURIComponent(
-        window.location.pathname.split("/").pop() || "index.html",
+        `${window.location.pathname}${window.location.search}` || "/",
       );
-      window.location.replace(`login.html?error=signin-required&redirect=${redirect}`);
+      window.location.replace(
+        `${routeFor("login")}?error=signin-required&redirect=${redirect}`,
+      );
       return null;
     }
 
@@ -709,7 +729,7 @@ async function logoutUser() {
   }
 
   state.currentUser = null;
-  window.location.replace("login.html");
+  window.location.replace(routeFor("login"));
 }
 
 function setupHeader() {
@@ -732,7 +752,7 @@ function setupHeader() {
   if (!favoritesLink) {
     favoritesLink = document.createElement("a");
     favoritesLink.className = "favorites-link";
-    favoritesLink.href = "favorites.html";
+    favoritesLink.href = routeFor("favorites");
     favoritesLink.setAttribute("aria-label", "Favourites");
     favoritesLink.innerHTML =
       '<span class="icon-heart" aria-hidden="true"></span>';
@@ -740,7 +760,7 @@ function setupHeader() {
   favoritesLink.innerHTML =
     '<span class="icon-heart" aria-hidden="true"></span>';
   if (bagLink) {
-    bagLink.href = "basket.html";
+    bagLink.href = routeFor("basket");
   }
   if (!favoritesLink.parentElement && bagLink?.parentElement === headerLeft) {
     headerLeft.appendChild(favoritesLink);
@@ -778,12 +798,12 @@ function setupHeader() {
     panel.innerHTML = `
       <p class="profile-dropdown-label">Logged into</p>
       <p class="profile-dropdown-user">${state.currentUser.name || state.currentUser.email}</p>
-      <a href="profile.html">Profile</a>
-      <a href="orders.html">Your Orders</a>
-      <a href="favorites.html">Favourites</a>
+      <a href="${routeFor("profile")}">Profile</a>
+      <a href="${routeFor("orders")}">Your Orders</a>
+      <a href="${routeFor("favorites")}">Favourites</a>
       ${
         state.currentUser.role === "ADMIN"
-          ? '<a href="admin-approvals.html">Access Approvals</a><a href="admin-analytics.html">Analytics</a>'
+          ? `<a href="${routeFor("admin-approvals")}">Access Approvals</a><a href="${routeFor("admin-analytics")}">Analytics</a>`
           : ""
       }
       <button class="logout-button" type="button">Logout</button>
@@ -792,8 +812,8 @@ function setupHeader() {
     panel.innerHTML = `
       <p class="profile-dropdown-label">Account</p>
       <p class="profile-dropdown-user">Guest</p>
-      <a href="login.html">Log In</a>
-      <a href="login.html#signup">Create Account</a>
+      <a href="${routeFor("login")}">Log In</a>
+      <a href="${routeFor("login", "#signup")}">Create Account</a>
     `;
   }
 
@@ -870,9 +890,9 @@ function buildProductMeta(card, productArt, fallbackIndex) {
 async function toggleFavorite(productMeta, button, card) {
   if (!state.currentUser) {
     const redirect = encodeURIComponent(
-      window.location.pathname.split("/").pop() || "index.html",
+      `${window.location.pathname}${window.location.search}` || "/",
     );
-    window.location.replace(`login.html?redirect=${redirect}`);
+    window.location.replace(`${routeFor("login")}?redirect=${redirect}`);
     return;
   }
 
@@ -1441,7 +1461,7 @@ async function initializeAdminApprovalsPage() {
   }
 
   if (state.currentUser.role !== "ADMIN") {
-    window.location.replace("profile.html");
+    window.location.replace(routeFor("profile"));
     return;
   }
 
@@ -1595,7 +1615,7 @@ async function initializeAnalyticsPage() {
   }
 
   if (state.currentUser?.role !== "ADMIN") {
-    window.location.replace("profile.html");
+    window.location.replace(routeFor("profile"));
     return;
   }
 
@@ -1926,7 +1946,7 @@ function setupAuthPage() {
   }
 
   const redirectTarget =
-    new URLSearchParams(window.location.search).get("redirect") || "index.html";
+    new URLSearchParams(window.location.search).get("redirect") || routeFor("index");
   const signInMessage = requireSelector("#signin-message");
   const signUpMessage = requireSelector("#signup-message");
   const verifyMessage = requireSelector("#verify-message");
@@ -2015,7 +2035,7 @@ function setupAuthPage() {
         const status = error.message.includes("waiting")
           ? "PENDING_APPROVAL"
           : "REJECTED";
-        window.location.href = `access-status.html?status=${status.toLowerCase()}`;
+        window.location.href = `${routeFor("access-status")}?status=${status.toLowerCase()}`;
       } else {
         showFieldMessage(signInMessage, error.message, "error");
       }
@@ -2121,7 +2141,7 @@ function setupAuthPage() {
         "success",
       );
       setTimeout(() => {
-        window.location.href = "access-status.html?status=pending_approval";
+        window.location.href = `${routeFor("access-status")}?status=pending_approval`;
       }, 1800);
     } catch (error) {
       showFieldMessage(passwordMessage, error.message, "error");
@@ -2209,7 +2229,7 @@ function setupAuthPage() {
         "success",
       );
       setTimeout(() => {
-        window.location.href = "signin.html";
+        window.location.href = routeFor("signin");
       }, 1600);
     } catch (error) {
       showFieldMessage(resetPasswordMessage, error.message, "error");
@@ -2329,7 +2349,7 @@ async function main() {
   }
 
   if (isAuthPage && state.currentUser) {
-    window.location.replace("index.html");
+    window.location.replace(routeFor("index"));
     return;
   }
 

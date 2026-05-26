@@ -12,11 +12,18 @@
     (["127.0.0.1", "localhost"].includes(window.location.hostname)
       ? "http://127.0.0.1:4000"
       : "https://api.voizn.store");
+  const routeFor = (name = "index") => {
+    const normalized = String(name || "index")
+      .trim()
+      .replace(/^\/+|\/+$/g, "")
+      .replace(/\.html$/i, "");
+    return !normalized || normalized === "index" ? "/" : `/${normalized}/`;
+  };
   const PRODUCT_BINDINGS = {
     "Ghostline Hoodie": {
       handle: "ghostline-hoodie",
       variantId: "gid://shopify/ProductVariant/59557595578702",
-      page: "ghostline-hoodie.html",
+      page: routeFor("ghostline-hoodie"),
       materialInfo: "Heavyweight brushed cotton blend with a soft fleece-backed interior.",
       detailBody:
         "Built for colder rotations with a cleaner oversized shape, dropped shoulders, and an everyday monochrome finish.",
@@ -30,7 +37,7 @@
     "Signal Tee": {
       handle: "signal-tee",
       variantId: "gid://shopify/ProductVariant/59557632606542",
-      page: "signal-tee.html",
+      page: routeFor("signal-tee"),
       materialInfo: "Premium midweight cotton jersey made for everyday wear.",
       detailBody:
         "A clean base layer with a boxy silhouette and sharper hem finish for understated styling.",
@@ -44,7 +51,7 @@
     "Silent Short": {
       handle: "silent-short",
       variantId: "gid://shopify/ProductVariant/59557635850574",
-      page: "silent-short.html",
+      page: routeFor("silent-short"),
       materialInfo: "Lightweight performance fabric with a soft utility mesh hand feel.",
       detailBody:
         "Warm-weather shorts with a cleaner cut, easy movement, and understated technical energy.",
@@ -968,7 +975,7 @@
     const favorites = getSavedFavorites();
 
     if (!getCurrentUser()) {
-      window.location.replace("login.html");
+      window.location.replace(routeFor("login"));
       return false;
     }
 
@@ -1671,7 +1678,7 @@
 
   function bindBasketLinks() {
     document.querySelectorAll('.icon-link[aria-label="Basket"]').forEach((link) => {
-      link.href = "basket.html";
+      link.href = routeFor("basket");
     });
   }
 

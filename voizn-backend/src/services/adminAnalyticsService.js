@@ -166,8 +166,8 @@ function buildActivityRecord(base) {
     country,
     priority: HIGH_INTENT_PRIORITY[eventType] || 20,
     actions: {
-      productHref: base.product?.slug ? `${base.product.slug}.html` : null,
-      orderHref: orderNumber ? `orders.html?order=${orderNumber}` : null,
+      productHref: base.product?.slug ? `/${base.product.slug}/` : null,
+      orderHref: orderNumber ? `/orders/?order=${orderNumber}` : null,
       userEmail: userEmail || null,
     },
   };
