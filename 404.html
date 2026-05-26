@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>VOIZN | 404</title>
+        <meta
+            name="description"
+            content="The page you requested could not be found inside the private VOIZN website."
+        />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Oswald:wght@400;500;700&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="shortcut icon" type="image/png" href="/favicon.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="stylesheet" href="/assets/css/style.css" />
+    </head>
+    <body data-theme="dark">
+        <main class="auth-page entry-auth-page">
+            <section class="auth-shell entry-auth-shell error-shell">
+                <div class="auth-visual">
+                    <p class="hero-kicker">VOIZN / Route Missing</p>
+                    <h1>404</h1>
+                    <p class="hero-description">
+                        The page you asked for isn’t available in this route yet.
+                    </p>
+                </div>
+
+                <div class="auth-panel entry-auth-panel entry-auth-panel-static">
+                    <p class="eyebrow">Route Recovery</p>
+                    <h2 id="not-found-title">This page is off-grid right now.</h2>
+                    <p class="auth-copy" id="not-found-copy">
+                        We can route you back into the private VOIZN experience or try to recover the clean URL automatically.
+                    </p>
+
+                    <div class="entry-auth-actions entry-auth-actions-stacked">
+                        <a class="auth-button entry-auth-submit" href="/">Return Home</a>
+                        <a class="entry-secondary-button" href="/signin/">Go To Sign In</a>
+                    </div>
+
+                    <div class="entry-auth-note">
+                        <p class="product-tag">Requested Path</p>
+                        <p id="not-found-path">/</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <script>
+            (function () {
+              const knownRoutes = new Set([
+                "access-status",
+                "admin-analytics",
+                "admin-approvals",
+                "basket",
+                "bottoms",
+                "collections",
+                "favorites",
+                "fleeces",
+                "ghostline-hoodie",
+                "hoodies",
+                "jackets",
+                "latest-drop",
+                "login",
+                "orders",
+                "profile",
+                "reset-password",
+                "shorts",
+                "signal-tee",
+                "signin",
+                "signup",
+                "silent-short",
+                "story",
+                "support",
+                "t-shirts",
+              ]);
+
+              const pathname = window.location.pathname;
+              const trimmed = pathname.replace(/^\/+|\/+$/g, "");
+              const routeSlug = trimmed.split("/")[0] || "";
+
+              const pathNode = document.getElementById("not-found-path");
+              if (pathNode) {
+                pathNode.textContent = pathname;
+              }
+
+              if (!routeSlug || !knownRoutes.has(routeSlug)) {
+                return;
+              }
+
+              const titleNode = document.getElementById("not-found-title");
+              const copyNode = document.getElementById("not-found-copy");
+              if (titleNode) {
+                titleNode.textContent = "Recovering your clean VOIZN route.";
+              }
+              if (copyNode) {
+                copyNode.textContent =
+                  "This route exists inside the site. We’re routing you into the correct page now.";
+              }
+
+              const target = `/${routeSlug}/index.html${window.location.search}${window.location.hash}`;
+              window.location.replace(target);
+            })();
+        </script>
+    </body>
+</html>

@@ -48,6 +48,24 @@ const routeSlugFromLocation = () => {
   return last.replace(/\.html$/i, "") || "index";
 };
 
+function ensureCanonicalPath() {
+  const path = window.location.pathname;
+  if (path === "/index.html") {
+    window.history.replaceState({}, "", "/");
+    return;
+  }
+
+  if (path.endsWith("/index.html")) {
+    const cleanPath = path.replace(/index\.html$/i, "");
+    const normalizedPath = cleanPath.endsWith("/") ? cleanPath : `${cleanPath}/`;
+    window.history.replaceState(
+      {},
+      "",
+      `${normalizedPath}${window.location.search}${window.location.hash}`,
+    );
+  }
+}
+
 function ensureFavicon() {
   const head = document.head;
   if (!head) {
@@ -164,6 +182,7 @@ const applyTheme = (theme) => {
 };
 
 ensureFavicon();
+ensureCanonicalPath();
 applyTheme(getSavedTheme());
 
 async function apiFetch(path, options = {}) {

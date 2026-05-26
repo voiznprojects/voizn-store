@@ -110,7 +110,10 @@ async function recordFailedLoginAttempt({ email, ipAddress }) {
   });
 
   if (throttle.failedAttempts < 5) {
-    return;
+    return {
+      failedAttempts: throttle.failedAttempts,
+      remainingAttempts: Math.max(0, 5 - throttle.failedAttempts),
+    };
   }
 
   const stageIndex = Math.min(
@@ -361,25 +364,33 @@ export async function loginWithEmailPassword({ email, password, ipAddress }) {
   });
 
   if (!user?.passwordHash) {
-    await recordFailedLoginAttempt({
+    const attemptState = await recordFailedLoginAttempt({
       email: normalizedEmail,
       ipAddress: normalizedIp,
     });
     const error = new Error("Incorrect email or password.");
     error.statusCode = 401;
     error.code = "invalid_credentials";
+    if (attemptState) {
+      error.remainingAttempts = attemptState.remainingAttempts;
+      error.message = `Incorrect email or password. ${attemptState.remainingAttempts} attempt${attemptState.remainingAttempts === 1 ? "" : "s"} left before cooldown.`;
+    }
     throw error;
   }
 
   const isValidPassword = await compareValue(password, user.passwordHash);
   if (!isValidPassword) {
-    await recordFailedLoginAttempt({
+    const attemptState = await recordFailedLoginAttempt({
       email: normalizedEmail,
       ipAddress: normalizedIp,
     });
     const error = new Error("Incorrect email or password.");
     error.statusCode = 401;
     error.code = "invalid_credentials";
+    if (attemptState) {
+      error.remainingAttempts = attemptState.remainingAttempts;
+      error.message = `Incorrect email or password. ${attemptState.remainingAttempts} attempt${attemptState.remainingAttempts === 1 ? "" : "s"} left before cooldown.`;
+    }
     throw error;
   }
 
