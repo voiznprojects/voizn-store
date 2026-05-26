@@ -2,7 +2,11 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />        <script>
+            if (window.location.pathname.toLowerCase().endsWith('/basket.html')) {
+                window.location.replace('/basket/' + window.location.search + window.location.hash);
+            }
+        </script>
         <title>VOIZN | Basket</title>
         <meta name="description" content="Review your VOIZN basket before Shopify checkout." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -153,6 +157,7 @@
         <script src="/assets/js/shopify.js?v=2"></script>
     </body>
 </html>
+
 
 
 

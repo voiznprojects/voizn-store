@@ -17,43 +17,53 @@
         <link rel="icon" type="image/png" href="/favicon.png" />
         <link rel="shortcut icon" type="image/png" href="/favicon.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="stylesheet" href="/assets/css/style.css" />
         <style>
             :root {
                 color-scheme: dark;
-                --voizn-bg: #050505;
-                --voizn-panel: rgba(22, 22, 26, 0.94);
-                --voizn-border: rgba(255, 255, 255, 0.08);
-                --voizn-copy: #d7dae3;
-                --voizn-muted: #96a0b6;
-                --voizn-accent: #f4f5f8;
+                --bg-1: #050505;
+                --bg-2: #0d0d10;
+                --panel: rgba(20, 20, 24, 0.94);
+                --panel-2: rgba(12, 12, 15, 0.86);
+                --border: rgba(255, 255, 255, 0.08);
+                --copy: #d7dae3;
+                --muted: #98a1b7;
+                --accent: #f4f5f8;
+                --accent-soft: #b9c7ff;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            html,
+            body {
+                min-height: 100%;
+                margin: 0;
             }
 
             body {
-                min-height: 100vh;
-                margin: 0;
                 background:
-                    radial-gradient(circle at top center, rgba(255, 255, 255, 0.08), transparent 42%),
-                    linear-gradient(180deg, #0b0b0d 0%, #050505 55%, #020202 100%);
-                color: var(--voizn-copy);
+                    radial-gradient(circle at top center, rgba(255, 255, 255, 0.08), transparent 32%),
+                    linear-gradient(180deg, var(--bg-2) 0%, var(--bg-1) 58%, #020202 100%);
+                color: var(--copy);
                 font-family: "Space Grotesk", sans-serif;
             }
 
-            .voizn-404-wrap {
+            .voizn-404 {
                 min-height: 100vh;
                 display: grid;
                 place-items: center;
                 padding: 40px 24px;
             }
 
-            .voizn-404-grid {
+            .voizn-404-shell {
                 width: min(1120px, 100%);
                 display: grid;
-                grid-template-columns: 1.2fr 1fr;
-                background: linear-gradient(180deg, rgba(34, 35, 39, 0.92), rgba(16, 16, 18, 0.96));
-                border: 1px solid var(--voizn-border);
+                grid-template-columns: 1.15fr 1fr;
+                border: 1px solid var(--border);
+                background: linear-gradient(180deg, rgba(27, 28, 32, 0.96), rgba(10, 10, 13, 0.96));
+                box-shadow: 0 28px 80px rgba(0, 0, 0, 0.38);
                 overflow: hidden;
-                box-shadow: 0 28px 80px rgba(0, 0, 0, 0.4);
             }
 
             .voizn-404-visual,
@@ -63,46 +73,46 @@
 
             .voizn-404-visual {
                 background:
-                    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.1), transparent 25%),
-                    linear-gradient(180deg, rgba(28, 29, 33, 0.9), rgba(12, 12, 14, 0.95));
+                    radial-gradient(circle at 52% 22%, rgba(255, 255, 255, 0.08), transparent 26%),
+                    linear-gradient(180deg, rgba(31, 32, 37, 0.94), rgba(13, 13, 16, 0.98));
             }
 
-            .voizn-404-kicker,
-            .voizn-404-label {
+            .voizn-kicker,
+            .voizn-label {
                 margin: 0 0 18px;
-                font-size: 0.96rem;
+                color: var(--accent-soft);
+                font-size: 0.95rem;
                 letter-spacing: 0.22em;
                 text-transform: uppercase;
-                color: #b7c7ff;
             }
 
-            .voizn-404-title {
-                margin: 0 0 20px;
+            .voizn-code {
+                margin: 0 0 18px;
                 font-family: "Oswald", sans-serif;
-                font-size: clamp(5rem, 12vw, 8.5rem);
-                line-height: 0.96;
-                color: var(--voizn-accent);
+                font-size: clamp(5.8rem, 14vw, 9rem);
+                line-height: 0.92;
+                color: var(--accent);
             }
 
-            .voizn-404-copy,
-            .voizn-404-panel-copy,
-            .voizn-404-note {
+            .voizn-copy,
+            .voizn-panel-copy,
+            .voizn-path-copy {
                 margin: 0;
-                line-height: 1.7;
-                font-size: 1.1rem;
-                color: var(--voizn-copy);
+                color: var(--copy);
+                line-height: 1.75;
+                font-size: 1.08rem;
             }
 
-            .voizn-404-note {
-                color: var(--voizn-muted);
+            .voizn-panel-copy {
+                color: var(--muted);
             }
 
             .voizn-404-panel h2 {
                 margin: 0 0 18px;
                 font-family: "Oswald", sans-serif;
-                font-size: clamp(2.4rem, 5vw, 4rem);
-                line-height: 1;
-                color: var(--voizn-accent);
+                font-size: clamp(2.5rem, 5vw, 4rem);
+                line-height: 0.98;
+                color: var(--accent);
             }
 
             .voizn-404-actions {
@@ -123,48 +133,47 @@
                 text-transform: uppercase;
                 letter-spacing: 0.12em;
                 font-weight: 700;
-                transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+                transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
             }
 
-            .voizn-404-primary {
-                background: #f5f6f8;
+            .voizn-primary {
+                background: #f4f5f8;
                 color: #06070b;
             }
 
-            .voizn-404-secondary {
-                border: 1px solid var(--voizn-border);
-                color: var(--voizn-accent);
+            .voizn-secondary {
                 background: rgba(255, 255, 255, 0.02);
+                color: var(--accent);
+                border: 1px solid var(--border);
             }
 
             .voizn-404-actions a:hover {
                 transform: translateY(-2px);
             }
 
-            .voizn-404-path {
-                margin-top: 22px;
+            .voizn-path {
                 padding: 18px 20px;
-                border: 1px solid var(--voizn-border);
-                background: rgba(255, 255, 255, 0.02);
+                background: var(--panel-2);
+                border: 1px solid var(--border);
             }
 
-            .voizn-404-path strong {
+            .voizn-path strong {
                 display: block;
                 margin-bottom: 8px;
-                font-size: 0.86rem;
+                color: var(--accent-soft);
+                font-size: 0.85rem;
                 letter-spacing: 0.18em;
                 text-transform: uppercase;
-                color: #b7c7ff;
             }
 
-            .voizn-404-path code {
+            .voizn-path code {
+                color: var(--accent);
                 font-family: "Space Grotesk", monospace;
-                color: var(--voizn-accent);
-                word-break: break-all;
+                word-break: break-word;
             }
 
-            @media (max-width: 880px) {
-                .voizn-404-grid {
+            @media (max-width: 900px) {
+                .voizn-404-shell {
                     grid-template-columns: 1fr;
                 }
 
@@ -172,33 +181,37 @@
                 .voizn-404-panel {
                     padding: 40px 28px;
                 }
+
+                .voizn-404-actions a {
+                    width: 100%;
+                }
             }
         </style>
     </head>
-    <body data-theme="dark">
-        <main class="voizn-404-wrap">
-            <section class="voizn-404-grid">
+    <body>
+        <main class="voizn-404">
+            <section class="voizn-404-shell">
                 <div class="voizn-404-visual">
-                    <p class="voizn-404-kicker">VOIZN / Route Missing</p>
-                    <h1 class="voizn-404-title">404</h1>
-                    <p class="voizn-404-copy">
-                        The page you asked for isn’t available through this route yet. We can route you back into the private VOIZN space or recover the path automatically if it exists.
+                    <p class="voizn-kicker">VOIZN / Route Missing</p>
+                    <h1 class="voizn-code">404</h1>
+                    <p class="voizn-copy">
+                        This page is outside the private VOIZN route map. If the address is valid, we’ll recover it. Otherwise, head back into the main experience.
                     </p>
                 </div>
 
                 <div class="voizn-404-panel">
-                    <p class="voizn-404-label">Route Recovery</p>
+                    <p class="voizn-label">Route Recovery</p>
                     <h2 id="not-found-title">This page is off-grid right now.</h2>
-                    <p class="voizn-404-panel-copy" id="not-found-copy">
-                        We can route you back into the private VOIZN experience or try to recover the clean URL automatically.
+                    <p class="voizn-panel-copy" id="not-found-copy">
+                        We can route you back into the private VOIZN website or recover the clean page route automatically if it exists.
                     </p>
 
                     <div class="voizn-404-actions">
-                        <a class="voizn-404-primary" href="/">Return Home</a>
-                        <a class="voizn-404-secondary" href="/signin/">Go To Sign In</a>
+                        <a class="voizn-primary" href="/">Return Home</a>
+                        <a class="voizn-secondary" href="/signin/">Go To Sign In</a>
                     </div>
 
-                    <div class="voizn-404-path">
+                    <div class="voizn-path">
                         <strong>Requested Path</strong>
                         <code id="not-found-path">/</code>
                     </div>
@@ -208,58 +221,60 @@
 
         <script>
             (function () {
-              const knownRoutes = new Set([
-                "access-status",
-                "admin-analytics",
-                "admin-approvals",
-                "basket",
-                "bottoms",
-                "collections",
-                "favorites",
-                "fleeces",
-                "ghostline-hoodie",
-                "hoodies",
-                "jackets",
-                "latest-drop",
-                "login",
-                "orders",
-                "profile",
-                "reset-password",
-                "shorts",
-                "signal-tee",
-                "signin",
-                "signup",
-                "silent-short",
-                "story",
-                "support",
-                "t-shirts",
-              ]);
+                const knownRoutes = new Set([
+                    "access-status",
+                    "admin-analytics",
+                    "admin-approvals",
+                    "basket",
+                    "bottoms",
+                    "collections",
+                    "favorites",
+                    "fleeces",
+                    "ghostline-hoodie",
+                    "hoodies",
+                    "jackets",
+                    "latest-drop",
+                    "login",
+                    "orders",
+                    "profile",
+                    "reset-password",
+                    "shorts",
+                    "signal-tee",
+                    "signin",
+                    "signup",
+                    "silent-short",
+                    "story",
+                    "support",
+                    "t-shirts",
+                ]);
 
-              const pathname = window.location.pathname;
-              const trimmed = pathname.replace(/^\/+|\/+$/g, "");
-              const routeSlug = trimmed.split("/")[0] || "";
+                const pathname = window.location.pathname;
+                const trimmed = pathname.replace(/^\/+|\/+$/g, "");
+                const routeSlug = trimmed.split("/")[0] || "";
 
-              const pathNode = document.getElementById("not-found-path");
-              if (pathNode) {
-                pathNode.textContent = pathname;
-              }
+                const pathNode = document.getElementById("not-found-path");
+                if (pathNode) {
+                    pathNode.textContent = pathname;
+                }
 
-              if (!routeSlug || !knownRoutes.has(routeSlug)) {
-                return;
-              }
+                if (!routeSlug || !knownRoutes.has(routeSlug)) {
+                    return;
+                }
 
-              const titleNode = document.getElementById("not-found-title");
-              const copyNode = document.getElementById("not-found-copy");
-              if (titleNode) {
-                titleNode.textContent = "Recovering your clean VOIZN route.";
-              }
-              if (copyNode) {
-                copyNode.textContent =
-                  "This route exists inside the site. We’re routing you into the correct page now.";
-              }
+                const titleNode = document.getElementById("not-found-title");
+                const copyNode = document.getElementById("not-found-copy");
 
-              const target = `/${routeSlug}/index.html${window.location.search}${window.location.hash}`;
-              window.location.replace(target);
+                if (titleNode) {
+                    titleNode.textContent = "Recovering your clean VOIZN route.";
+                }
+
+                if (copyNode) {
+                    copyNode.textContent =
+                        "This route exists inside the site. We’re routing you into the correct page now.";
+                }
+
+                const target = `/${routeSlug}/index.html${window.location.search}${window.location.hash}`;
+                window.location.replace(target);
             })();
         </script>
     </body>

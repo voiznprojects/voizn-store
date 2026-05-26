@@ -2,7 +2,11 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />        <script>
+            if (window.location.pathname.toLowerCase().endsWith('/profile.html')) {
+                window.location.replace('/profile/' + window.location.search + window.location.hash);
+            }
+        </script>
         <title>VOIZN | Profile</title>
         <meta name="description" content="View your VOIZN account, access status, favourites, and order summary." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -229,6 +233,7 @@
         <script src="/assets/js/shopify.js?v=2"></script>
     </body>
 </html>
+
 
 
 

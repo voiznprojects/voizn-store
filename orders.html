@@ -2,7 +2,11 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />        <script>
+            if (window.location.pathname.toLowerCase().endsWith('/orders.html')) {
+                window.location.replace('/orders/' + window.location.search + window.location.hash);
+            }
+        </script>
         <title>VOIZN | Your Orders</title>
         <meta name="description" content="View your VOIZN order history and detailed order information." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -176,6 +180,7 @@
         <script src="/assets/js/shopify.js?v=2"></script>
     </body>
 </html>
+
 
 
 
