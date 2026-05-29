@@ -31,7 +31,11 @@ async function ensureDatabaseSchema() {
 }
 
 async function start() {
-  await ensureDatabaseSchema();
+  if (env.autoDbPush) {
+    await ensureDatabaseSchema();
+  } else {
+    console.log("[voizn-startup] Skipping Prisma db push during server startup.");
+  }
   await Promise.all([ensureSeedData(), ensureCatalogSeedData()]);
 
   app.listen(env.port, () => {

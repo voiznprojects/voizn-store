@@ -2,6 +2,7 @@ const THEME_STORAGE_KEY = "voizn-theme";
 const CATALOG_CACHE_KEY = "voizn-catalog-cache-v1";
 const CATALOG_CACHE_TTL = 1000 * 60 * 5;
 const DEFAULT_REQUEST_TIMEOUT_MS = 12000;
+const AUTH_REQUEST_TIMEOUT_MS = 18000;
 const API_CONFIG = window.VOIZN_CONFIG || {};
 const API_BASE_URL =
   API_CONFIG.apiBaseUrl ||
@@ -1964,6 +1965,11 @@ function setupAuthPage() {
     return;
   }
 
+  void Promise.allSettled([
+    apiFetch("/api/health", { method: "GET", timeoutMs: 4500 }),
+    apiFetch("/api/auth/me", { method: "GET", timeoutMs: 4500 }),
+  ]);
+
   const redirectTarget =
     new URLSearchParams(window.location.search).get("redirect") || routeFor("index");
   const signInMessage = requireSelector("#signin-message");
@@ -2041,6 +2047,7 @@ function setupAuthPage() {
     try {
       const payload = await apiFetch("/api/auth/login", {
         method: "POST",
+        timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
         body: JSON.stringify({
           email: requireSelector("#signin-email")?.value.trim(),
           password: requireSelector("#signin-password")?.value || "",

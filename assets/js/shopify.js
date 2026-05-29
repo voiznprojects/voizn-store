@@ -33,6 +33,42 @@
         "Soft brushed interior",
         "Style: VOI-GH01",
       ],
+      detailSections: [
+        {
+          title: "Size & Fit",
+          items: [
+            "Female model is wearing size S and is 5'9\" (175cm approx.)",
+            "Male model is wearing size M and is 6'3\" (191cm approx.)",
+            "Oversized fit with dropped shoulders",
+            "Built for easy layering through colder rotations",
+          ],
+          linkLabel: "Size Guide",
+        },
+        {
+          title: "Delivery & Returns",
+          paragraphs: [
+            "Tracked delivery options are available at checkout based on your location.",
+            "Free 30-day returns on unworn pieces. Some exclusions may apply.",
+          ],
+          linkLabel: "Delivery details",
+        },
+      ],
+      reviews: [
+        {
+          title: "Exactly the right weight",
+          rating: 5,
+          author: "Mason",
+          date: "20 May 2026",
+          body: "Heavy in a good way. The shape sits clean and the brushed inside feels premium straight away.",
+        },
+        {
+          title: "Boxy and clean",
+          rating: 4,
+          author: "Jules",
+          date: "08 Apr 2026",
+          body: "Really like the drop on the shoulders. I would just size down if you want less volume.",
+        },
+      ],
     },
     "Signal Tee": {
       handle: "signal-tee",
@@ -46,6 +82,34 @@
         "Midweight cotton",
         "Minimal seam finish",
         "Style: VOI-ST01",
+      ],
+      detailSections: [
+        {
+          title: "Size & Fit",
+          items: [
+            "Relaxed box fit through the chest and body",
+            "Designed to sit slightly wider across the shoulder",
+            "Choose your regular size for the intended VOIZN silhouette",
+          ],
+          linkLabel: "Size Guide",
+        },
+        {
+          title: "Delivery & Returns",
+          paragraphs: [
+            "Tracked delivery options appear at checkout based on your location.",
+            "Free store pick-up and 30-day returns are available on eligible orders.",
+          ],
+          linkLabel: "Delivery info",
+        },
+      ],
+      reviews: [
+        {
+          title: "Best everyday tee",
+          rating: 5,
+          author: "Ari",
+          date: "18 May 2026",
+          body: "The box fit is clean without feeling too wide. Easy one to wear every day.",
+        },
       ],
     },
     "Silent Short": {
@@ -61,8 +125,38 @@
         "Elastic waistband",
         "Style: VOI-SS01",
       ],
+      detailSections: [
+        {
+          title: "Size & Fit",
+          items: [
+            "Relaxed leg opening with an easy everyday fit",
+            "Elastic waistband for flexible comfort",
+            "Take your usual size for the intended silhouette",
+          ],
+          linkLabel: "Size Guide",
+        },
+        {
+          title: "Delivery & Returns",
+          paragraphs: [
+            "Standard and express delivery options are available at checkout.",
+            "Returns are accepted within 30 days on unworn pieces.",
+          ],
+          linkLabel: "Returns policy",
+        },
+      ],
+      reviews: [
+        {
+          title: "Good summer pair",
+          rating: 4,
+          author: "Kai",
+          date: "11 May 2026",
+          body: "Easy fit and lightweight feel. Would like more colours but the shape is strong.",
+        },
+      ],
     },
   };
+
+  const SIZE_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL"];
 
   let productModalElements = null;
 
@@ -687,7 +781,72 @@
 
   function formatMoney(amount, currencyCode) {
     const numericAmount = Number(amount || 0);
-    return `${getCurrencySymbol(currencyCode)}${numericAmount.toFixed(2)}`;
+    const formattedAmount = Number.isInteger(numericAmount)
+      ? String(numericAmount)
+      : numericAmount.toFixed(2).replace(/\.?0+$/, "");
+    return `${getCurrencySymbol(currencyCode)}${formattedAmount}`;
+  }
+
+  function sortVariantValues(optionName, values) {
+    const normalizedValues = [...new Set((values || []).filter(Boolean))];
+    if (String(optionName || "").toLowerCase() !== "size") {
+      return normalizedValues;
+    }
+
+    return normalizedValues.sort((first, second) => {
+      const firstIndex = SIZE_ORDER.indexOf(String(first).toUpperCase());
+      const secondIndex = SIZE_ORDER.indexOf(String(second).toUpperCase());
+
+      if (firstIndex !== -1 || secondIndex !== -1) {
+        if (firstIndex === -1) {
+          return 1;
+        }
+        if (secondIndex === -1) {
+          return -1;
+        }
+        return firstIndex - secondIndex;
+      }
+
+      return String(first).localeCompare(String(second), undefined, { numeric: true });
+    });
+  }
+
+  function getSelectedControlValue(control) {
+    if (!control) {
+      return "";
+    }
+
+    if (typeof control.getValue === "function") {
+      return control.getValue();
+    }
+
+    return control.select?.value || "";
+  }
+
+  function setSelectedControlValue(control, value) {
+    if (!control || !value) {
+      return;
+    }
+
+    if (typeof control.setValue === "function") {
+      control.setValue(value);
+      return;
+    }
+
+    if (control.select) {
+      control.select.value = value;
+    }
+  }
+
+  function getVariantOptionValue(variant, optionName) {
+    return (
+      (variant?.selectedOptions || []).find((selectedOption) => selectedOption.name === optionName)
+        ?.value || ""
+    );
+  }
+
+  function isVariantPurchasable(variant) {
+    return variant && variant.availableForSale !== false && Number(variant.stock ?? 1) > 0;
   }
 
   function getMeaningfulOptions(product) {
@@ -703,7 +862,10 @@
   function buildAvailableOptions(product) {
     return getMeaningfulOptions(product).map((option) => ({
       name: option.name,
-      values: option.optionValues.map((value) => value.name),
+      values: sortVariantValues(
+        option.name,
+        option.optionValues.map((value) => value.name),
+      ),
     }));
   }
 
@@ -767,15 +929,125 @@
       return;
     }
 
-    selectors.forEach(({ name, select }) => {
+    selectors.forEach((selector) => {
+      const { name } = selector;
       const matchedOption = (variant.selectedOptions || []).find(
         (selectedOption) => selectedOption.name === name,
       );
 
-      if (matchedOption && select) {
-        select.value = matchedOption.value;
+      if (matchedOption) {
+        setSelectedControlValue(selector, matchedOption.value);
       }
     });
+  }
+
+  function createVariantOptionButtons(product, mountPoint, className) {
+    const variants = (product?.variants?.edges || []).map(({ node }) => node);
+    const meaningfulOptions = getMeaningfulOptions(product);
+
+    if (!meaningfulOptions.length) {
+      return [];
+    }
+
+    const selectors = meaningfulOptions.map((option) => {
+      const wrapper = document.createElement("section");
+      wrapper.className = className;
+      const title = document.createElement("span");
+      title.textContent = option.name;
+      const grid = document.createElement("div");
+      grid.className = "variant-option-grid";
+      wrapper.appendChild(title);
+      wrapper.appendChild(grid);
+      mountPoint.appendChild(wrapper);
+
+      const selector = {
+        name: option.name,
+        values: sortVariantValues(
+          option.name,
+          option.optionValues.map((value) => value.name),
+        ),
+        grid,
+        buttons: [],
+        selectedValue: sortVariantValues(
+          option.name,
+          option.optionValues.map((value) => value.name),
+        )[0] || "",
+        getValue() {
+          return this.selectedValue;
+        },
+        setValue(nextValue) {
+          if (!nextValue) {
+            return;
+          }
+
+          this.selectedValue = nextValue;
+          this.buttons.forEach(({ button, value }) => {
+            const isSelected = value === nextValue;
+            button.classList.toggle("is-selected", isSelected);
+            button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+          });
+          refreshAvailability();
+        },
+      };
+
+      selector.values.forEach((value) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "variant-option-button";
+        button.textContent = value;
+        button.dataset.value = value;
+        button.addEventListener("click", () => {
+          if (button.disabled) {
+            return;
+          }
+          selector.setValue(value);
+        });
+        grid.appendChild(button);
+        selector.buttons.push({ value, button });
+      });
+
+      return selector;
+    });
+
+    function refreshAvailability() {
+      selectors.forEach((selector) => {
+        selector.buttons.forEach(({ value, button }) => {
+          const matches = variants.filter((variant) =>
+            selectors.every((otherSelector) => {
+              const expectedValue =
+                otherSelector.name === selector.name
+                  ? value
+                  : getSelectedControlValue(otherSelector);
+              return getVariantOptionValue(variant, otherSelector.name) === expectedValue;
+            }),
+          );
+
+          const available = matches.some((variant) => isVariantPurchasable(variant));
+          const exists = matches.length > 0;
+          button.disabled = !available;
+          button.classList.toggle("is-unavailable", exists && !available);
+          button.classList.toggle("is-missing", !exists);
+        });
+
+        const currentValue = getSelectedControlValue(selector);
+        const currentButton = selector.buttons.find(({ value }) => value === currentValue);
+        if (!currentButton || currentButton.button.disabled) {
+          const fallback = selector.buttons.find(({ button }) => !button.disabled) || selector.buttons[0];
+          if (fallback) {
+            selector.selectedValue = fallback.value;
+          }
+        }
+
+        selector.buttons.forEach(({ button, value }) => {
+          const isSelected = value === selector.selectedValue;
+          button.classList.toggle("is-selected", isSelected);
+          button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+        });
+      });
+    }
+
+    refreshAvailability();
+    return selectors;
   }
 
   function buildProductSnapshot(card) {
@@ -800,6 +1072,8 @@
         binding.detailBody ||
         "Detailed product information will appear here once this item is fully synced.",
       details: binding.details || [],
+      detailSections: binding.detailSections || [],
+      reviews: binding.reviews || [],
       page: binding.page || "",
     };
   }
@@ -894,6 +1168,84 @@
     return productModalElements;
   }
 
+  function renderExtendedDetailSections(container, snapshot, prefix) {
+    if (!container) {
+      return;
+    }
+
+    container.querySelectorAll(`.${prefix}-extra-sections`).forEach((node) => node.remove());
+
+    const sectionWrap = document.createElement("div");
+    sectionWrap.className = `${prefix}-extra-sections`;
+    const sections = snapshot.detailSections || [];
+    const reviews = snapshot.reviews || [];
+
+    sections.forEach((section, index) => {
+      const article = document.createElement("section");
+      article.className = `${prefix}-accordion`;
+      article.innerHTML = `
+        <button class="${prefix}-accordion-toggle" type="button" aria-expanded="${index === 0 ? "true" : "false"}">
+          <span>${section.title}</span>
+          <span class="${prefix}-accordion-icon">${index === 0 ? "−" : "+"}</span>
+        </button>
+        <div class="${prefix}-accordion-panel" ${index === 0 ? "" : "hidden"}>
+          ${(section.items || []).length ? `<ul>${section.items.map((item) => `<li>${item}</li>`).join("")}</ul>` : ""}
+          ${(section.paragraphs || []).map((paragraph) => `<p>${paragraph}</p>`).join("")}
+          ${section.linkLabel ? `<a href="#" class="${prefix}-inline-link">${section.linkLabel}</a>` : ""}
+        </div>
+      `;
+
+      const toggle = article.querySelector(`.${prefix}-accordion-toggle`);
+      const panel = article.querySelector(`.${prefix}-accordion-panel`);
+      const icon = article.querySelector(`.${prefix}-accordion-icon`);
+      toggle?.addEventListener("click", () => {
+        const nextExpanded = toggle.getAttribute("aria-expanded") !== "true";
+        toggle.setAttribute("aria-expanded", nextExpanded ? "true" : "false");
+        if (panel) {
+          panel.hidden = !nextExpanded;
+        }
+        if (icon) {
+          icon.textContent = nextExpanded ? "−" : "+";
+        }
+      });
+
+      sectionWrap.appendChild(article);
+    });
+
+    if (reviews.length) {
+      const average = reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length;
+      const reviewSection = document.createElement("section");
+      reviewSection.className = `${prefix}-reviews`;
+      reviewSection.innerHTML = `
+        <div class="${prefix}-reviews-summary">
+          <h3>Reviews (${reviews.length})</h3>
+          <p>${average.toFixed(1)} stars</p>
+        </div>
+        <div class="${prefix}-review-list">
+          ${reviews
+            .map(
+              (review) => `
+                <article class="${prefix}-review">
+                  <div class="${prefix}-review-head">
+                    <strong>${review.title}</strong>
+                    <span>${review.author} · ${review.date}</span>
+                  </div>
+                  <div class="${prefix}-review-rating">${"★".repeat(review.rating)}${"☆".repeat(Math.max(0, 5 - review.rating))}</div>
+                  <p>${review.body}</p>
+                </article>
+              `,
+            )
+            .join("")}
+        </div>
+      `;
+      sectionWrap.appendChild(reviewSection);
+    }
+
+    if (sectionWrap.children.length) {
+      container.appendChild(sectionWrap);
+    }
+  }
+
   function closeProductModal() {
     const elements = ensureProductModal();
     elements.shell.hidden = true;
@@ -936,39 +1288,7 @@
   function renderOptions(product) {
     const elements = ensureProductModal();
     elements.options.innerHTML = "";
-
-    const meaningfulOptions = getMeaningfulOptions(product);
-
-    if (meaningfulOptions.length === 0) {
-      return [];
-    }
-
-    const selectors = [];
-
-    meaningfulOptions.forEach((option) => {
-      const wrapper = document.createElement("label");
-      wrapper.className = "product-modal-option";
-      const title = document.createElement("span");
-      title.textContent = option.name;
-
-      const select = document.createElement("select");
-      option.optionValues.forEach((value) => {
-        const optionElement = document.createElement("option");
-        optionElement.value = value.name;
-        optionElement.textContent = value.name;
-        if (value.firstSelectableVariant?.id) {
-          optionElement.dataset.variantId = value.firstSelectableVariant.id;
-        }
-        select.appendChild(optionElement);
-      });
-
-      wrapper.appendChild(title);
-      wrapper.appendChild(select);
-      elements.options.appendChild(wrapper);
-      selectors.push({ name: option.name, select });
-    });
-
-    return selectors;
+    return createVariantOptionButtons(product, elements.options, "product-modal-option");
   }
 
   function toggleFavoriteFromSnapshot(snapshot) {
@@ -1127,9 +1447,7 @@
       product?.variants?.edges?.[0]?.node?.price?.amount || snapshot.price.replace(/[^\d.]/g, "");
     const liveCurrency =
       product?.variants?.edges?.[0]?.node?.price?.currencyCode || "GBP";
-    elements.price.textContent = livePrice
-      ? `${liveCurrency === "GBP" ? "£" : `${liveCurrency} `}${livePrice}`
-      : snapshot.price;
+    elements.price.textContent = livePrice ? formatMoney(livePrice, liveCurrency) : snapshot.price;
     elements.subtitle.textContent = product?.description || snapshot.description || "Product details";
 
     const optionSelectors = renderOptions(product);
@@ -1157,11 +1475,11 @@
       }
 
       const matchedVariant = product.variants.edges.find(({ node }) =>
-        optionSelectors.every(({ name, select }) =>
+        optionSelectors.every((selector) =>
           node.selectedOptions.some(
             (selectedOption) =>
-              selectedOption.name === name &&
-              selectedOption.value === select.value,
+              selectedOption.name === selector.name &&
+              selectedOption.value === getSelectedControlValue(selector),
           ),
         ),
       );
@@ -1220,6 +1538,12 @@
       elements.detailThumb.innerHTML = "";
     }
 
+    renderExtendedDetailSections(
+      elements.detailPopover.querySelector(".product-detail-popover-card"),
+      snapshot,
+      "product-detail",
+    );
+
     elements.detailTrigger.onclick = () => {
       elements.detailPopover.hidden = false;
     };
@@ -1257,12 +1581,11 @@
 
     const livePrice = variants[0]?.price?.amount || snapshot.price.replace(/[^\d.]/g, "");
     const liveCurrency = variants[0]?.price?.currencyCode || "GBP";
-    const formattedPrice = livePrice
-      ? `${liveCurrency === "GBP" ? "£" : `${liveCurrency} `}${livePrice}`
-      : snapshot.price;
+    const formattedPrice = livePrice ? formatMoney(livePrice, liveCurrency) : snapshot.price;
     const voiznProduct = product?._voizn || null;
     const note = shell.querySelector(".product-page-note");
     const actions = shell.querySelector(".product-page-actions");
+    const summary = shell.querySelector(".product-page-summary");
     let notifyButton = shell.querySelector(".product-page-notify");
 
     title.textContent = snapshot.title;
@@ -1320,6 +1643,23 @@
       }
     }
 
+    if (summary) {
+      summary.querySelectorAll(".product-page-inline-details").forEach((node) => node.remove());
+    }
+
+    if (summary && note) {
+      const inlineDetailsMount = document.createElement("div");
+      inlineDetailsMount.className = "product-page-inline-details";
+      note.insertAdjacentElement("afterend", inlineDetailsMount);
+      renderExtendedDetailSections(inlineDetailsMount, snapshot, "product-page-detail");
+    }
+
+    renderExtendedDetailSections(
+      detailPopover.querySelector(".product-page-detail-card"),
+      snapshot,
+      "product-page-detail",
+    );
+
     options.innerHTML = "";
     const optionSelectors = renderProductPageOptions(product, options);
     const preferredVariant = getPreferredCheckoutVariant(variants);
@@ -1341,11 +1681,11 @@
       }
 
       const matchedVariant = variants.find((variant) =>
-        optionSelectors.every(({ name, select }) =>
+        optionSelectors.every((selector) =>
           variant.selectedOptions.some(
             (selectedOption) =>
-              selectedOption.name === name &&
-              selectedOption.value === select.value,
+              selectedOption.name === selector.name &&
+              selectedOption.value === getSelectedControlValue(selector),
           ),
         ),
       );
@@ -1359,9 +1699,9 @@
     addButton.onclick = async () => {
       const availableOptions = buildAvailableOptions(product);
       const selectedOptions = normalizeSelectedOptions(
-        optionSelectors.map(({ name, select }) => ({
-          name,
-          value: select.value,
+        optionSelectors.map((selector) => ({
+          name: selector.name,
+          value: getSelectedControlValue(selector),
         })),
         availableOptions,
       );
@@ -1522,42 +1862,7 @@
   }
 
   function renderProductPageOptions(product, mountPoint) {
-    const options = product?.options || [];
-    const meaningfulOptions = options.filter(
-      (option) =>
-        option.name &&
-        option.name.toLowerCase() !== "title" &&
-        option.optionValues &&
-        option.optionValues.length > 0,
-    );
-
-    if (meaningfulOptions.length === 0) {
-      return [];
-    }
-
-    const selectors = [];
-
-    meaningfulOptions.forEach((option) => {
-      const wrapper = document.createElement("label");
-      wrapper.className = "product-page-option";
-      const title = document.createElement("span");
-      title.textContent = option.name;
-      const select = document.createElement("select");
-
-      option.optionValues.forEach((value) => {
-        const optionElement = document.createElement("option");
-        optionElement.value = value.name;
-        optionElement.textContent = value.name;
-        select.appendChild(optionElement);
-      });
-
-      wrapper.appendChild(title);
-      wrapper.appendChild(select);
-      mountPoint.appendChild(wrapper);
-      selectors.push({ name: option.name, select });
-    });
-
-    return selectors;
+    return createVariantOptionButtons(product, mountPoint, "product-page-option");
   }
 
   async function bindProductPage() {
@@ -1956,12 +2261,15 @@
               .filter((option) => option.name === "Color")
               .map((option) => option.value),
           )];
-          const sizes = [...new Set(
-            variants
-              .flatMap((variant) => variant.selectedOptions || [])
-              .filter((option) => option.name === "Size")
-              .map((option) => option.value),
-          )];
+          const sizes = sortVariantValues(
+            "Size",
+            [...new Set(
+              variants
+                .flatMap((variant) => variant.selectedOptions || [])
+                .filter((option) => option.name === "Size")
+                .map((option) => option.value),
+            )],
+          );
 
           if (titleNode && product?.title) {
             titleNode.textContent = product.title;
@@ -1974,7 +2282,10 @@
           }
 
           if (priceNode && firstAvailable?.price?.amount) {
-            priceNode.textContent = `${firstAvailable.price.currencyCode === "GBP" ? "£" : `${firstAvailable.price.currencyCode} `}${firstAvailable.price.amount}`;
+            priceNode.textContent = formatMoney(
+              firstAvailable.price.amount,
+              firstAvailable.price.currencyCode || "GBP",
+            );
           }
 
           if (tagNode && product?.handle) {

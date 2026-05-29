@@ -2,6 +2,10 @@ import "dotenv/config";
 
 export const env = {
   port: Number(process.env.PORT || 4000),
+  autoDbPush:
+    String(process.env.AUTO_DB_PUSH || "").toLowerCase() === "true" ||
+    (!process.env.PORT &&
+      String(process.env.DATABASE_URL || "").includes("localhost")),
   jwtSecret: process.env.JWT_SECRET || "voizn-dev-secret-change-me",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
   emailFrom:
