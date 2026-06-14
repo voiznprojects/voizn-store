@@ -36,10 +36,13 @@ async function start() {
   } else {
     console.log("[voizn-startup] Skipping Prisma db push during server startup.");
   }
-  await Promise.all([ensureSeedData(), ensureCatalogSeedData()]);
 
   app.listen(env.port, () => {
     console.log(`VOIZN backend listening on http://127.0.0.1:${env.port}`);
+  });
+
+  Promise.all([ensureSeedData(), ensureCatalogSeedData()]).catch((error) => {
+    console.error("[voizn-startup] Seed initialization failed:", error);
   });
 }
 

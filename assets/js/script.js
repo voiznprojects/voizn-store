@@ -3,7 +3,8 @@ const COOKIE_CONSENT_STORAGE_KEY = "voizn-cookie-consent";
 const CATALOG_CACHE_KEY = "voizn-catalog-cache-v1";
 const CATALOG_CACHE_TTL = 1000 * 60 * 5;
 const DEFAULT_REQUEST_TIMEOUT_MS = 12000;
-const AUTH_REQUEST_TIMEOUT_MS = 18000;
+const AUTH_REQUEST_TIMEOUT_MS = 28000;
+const AUTH_WARMUP_TIMEOUT_MS = 8000;
 const API_CONFIG = window.VOIZN_CONFIG || {};
 const API_BASE_URL =
   API_CONFIG.apiBaseUrl ||
@@ -292,12 +293,58 @@ async function apiFetch(path, options = {}) {
   return data;
 }
 
+async function warmAuthBackend() {
+  try {
+    await apiFetch("/api/health", {
+      method: "GET",
+      timeoutMs: AUTH_WARMUP_TIMEOUT_MS,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function pageNeedsCatalogData() {
   if (isAuthPage || pageType === "access-status") {
     return false;
   }
 
   return true;
+}
+
+async function performLoginRequest(email, password) {
+  try {
+    return await apiFetch("/api/auth/login", {
+      method: "POST",
+      timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
+  } catch (error) {
+    if (
+      error?.code !== "request_timeout" &&
+      error?.code !== "network_unavailable"
+    ) {
+      throw error;
+    }
+
+    const warmed = await warmAuthBackend();
+    if (!warmed) {
+      throw error;
+    }
+
+    return apiFetch("/api/auth/login", {
+      method: "POST",
+      timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
+  }
 }
 
 function showFieldMessage(element, message = "", type = "") {
@@ -593,6 +640,14 @@ function setupThemeToggle() {
   });
 
   window.addEventListener("scroll", updateLightThemeDepth, { passive: true });
+}
+
+function setupAuthWarmup() {
+  if (!isAuthPage) {
+    return;
+  }
+
+  warmAuthBackend();
 }
 
 function setupRevealObserver() {
@@ -2084,16 +2139,11 @@ function setupAuthPage() {
     const submitButton = signInForm.querySelector('button[type="submit"]');
     setButtonLoading(submitButton, true, "Signing In");
     showFieldMessage(signInMessage, "");
+    const email = requireSelector("#signin-email")?.value.trim() || "";
+    const password = requireSelector("#signin-password")?.value || "";
 
     try {
-      const payload = await apiFetch("/api/auth/login", {
-        method: "POST",
-        timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
-        body: JSON.stringify({
-          email: requireSelector("#signin-email")?.value.trim(),
-          password: requireSelector("#signin-password")?.value || "",
-        }),
-      });
+      const payload = await performLoginRequest(email, password);
 
       state.currentUser = payload.user;
       window.location.replace(redirectTarget);
@@ -2398,6 +2448,7 @@ async function initializeCommonAuthenticatedFeatures() {
 async function main() {
   setupPageTransitions();
   setupThemeToggle();
+  setupAuthWarmup();
   setupMenu();
   setupDropdowns();
   setupScrollCinema();
