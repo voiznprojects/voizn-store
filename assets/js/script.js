@@ -1,4 +1,5 @@
 const THEME_STORAGE_KEY = "voizn-theme";
+const COOKIE_CONSENT_STORAGE_KEY = "voizn-cookie-consent";
 const CATALOG_CACHE_KEY = "voizn-catalog-cache-v1";
 const CATALOG_CACHE_TTL = 1000 * 60 * 5;
 const DEFAULT_REQUEST_TIMEOUT_MS = 12000;
@@ -117,6 +118,46 @@ function updateLightThemeDepth() {
     "--light-scroll-depth",
     progress.toFixed(3),
   );
+}
+
+function setupCookieConsent() {
+  if (localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY) === "accepted") {
+    return;
+  }
+
+  const banner = document.createElement("aside");
+  banner.className = "cookie-banner";
+  banner.setAttribute("role", "dialog");
+  banner.setAttribute("aria-live", "polite");
+  banner.setAttribute("aria-label", "Cookie preferences");
+  banner.innerHTML = `
+    <div class="cookie-banner__copy">
+      <p class="cookie-banner__eyebrow">Cookies</p>
+      <h2>Accept cookies for a smoother VOIZN experience.</h2>
+      <p>
+        We use essential cookies to keep private access secure and lightweight analytics cookies to improve the website.
+      </p>
+    </div>
+    <div class="cookie-banner__actions">
+      <button class="cookie-banner__button cookie-banner__button--ghost" type="button" data-cookie-action="later">Maybe later</button>
+      <button class="cookie-banner__button" type="button" data-cookie-action="accept">Accept cookies</button>
+    </div>
+  `;
+
+  document.body.appendChild(banner);
+
+  banner.addEventListener("click", (event) => {
+    const action = event.target.closest("[data-cookie-action]")?.dataset.cookieAction;
+    if (!action) {
+      return;
+    }
+
+    if (action === "accept") {
+      localStorage.setItem(COOKIE_CONSENT_STORAGE_KEY, "accepted");
+    }
+
+    banner.remove();
+  });
 }
 
 const slugify = (value) =>
@@ -2363,6 +2404,7 @@ async function main() {
   setupSearchForms();
   setupRevealObserver();
   setupAuthPage();
+  setupCookieConsent();
   setupHeader();
   markPageReady();
 

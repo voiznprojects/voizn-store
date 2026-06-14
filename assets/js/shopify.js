@@ -1873,21 +1873,27 @@
 
     const handle = shell.dataset.shopifyHandle || "";
     const title = shell.dataset.productTitle || "";
+    const binding = PRODUCT_BINDINGS[title] || {};
     const snapshot = {
       id: slugify(title),
       title,
       handle,
-      shopifyVariantGid: shell.dataset.variantId || "",
+      shopifyVariantGid: binding.variantId || shell.dataset.variantId || "",
       tag: shell.dataset.productTag || "",
       description: shell.dataset.productDescription || "",
       price: shell.dataset.productPrice || "",
       artClass: shell.dataset.artClass || "",
-      materialInfo: shell.dataset.materialInfo || "Material details coming soon.",
-      detailBody: shell.dataset.detailBody || "",
+      materialInfo:
+        binding.materialInfo ||
+        shell.dataset.materialInfo ||
+        "Material details coming soon.",
+      detailBody: binding.detailBody || shell.dataset.detailBody || "",
       details: shell.dataset.details
         ? shell.dataset.details.split("|").map((item) => item.trim()).filter(Boolean)
-        : [],
-      page: "",
+        : binding.details || [],
+      detailSections: binding.detailSections || [],
+      reviews: binding.reviews || [],
+      page: binding.page || "",
     };
 
     let product = null;
